@@ -1,5 +1,5 @@
 export interface ChatMessageProps {
-  messageContent: string;
+  messageContent?: string;
   senderId: string;
   picUrl?: string;
 }

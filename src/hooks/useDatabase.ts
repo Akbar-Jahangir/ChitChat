@@ -3,119 +3,113 @@ import { useContext, useState, useEffect } from "react";
 import { signUpProps } from "../interfaces/signUp.interface";
 import { ChatUserProps } from "../interfaces/chatUser.interface";
 import { Message } from "../interfaces/message.interface";
+import{ supabase} from "../utils/client";
 
 const useDatabase = () => {
   const { setSendername, setSenderId, setSenderPicUrl } =
     useContext(SenderContext);
   const [storedUsers, setStoredUsers] = useState<ChatUserProps[]>([]);
 
-  const openDB = (): Promise<IDBDatabase> => {
-    return new Promise((resolve, reject) => {
-      const openRequest = indexedDB.open("chatApp", 1);
-
-      openRequest.onupgradeneeded = () => {
-        const db = openRequest.result;
-
-        if (!db.objectStoreNames.contains("users")) {
-          const store = db.createObjectStore("users", { keyPath: "userId" });
-          store.createIndex("userId", "userId", { unique: true });
-          store.createIndex("email", "email", { unique: true });
-        }
-
-        if (!db.objectStoreNames.contains("conversations")) {
-          const conversationStore = db.createObjectStore("conversations", {
-            keyPath: "conversationId",
-          });
-          conversationStore.createIndex("senderId", "senderId", {
-            unique: false,
-          });
-          conversationStore.createIndex("recipientId", "recipientId", {
-            unique: false,
-          });
-          conversationStore.createIndex("timestamp", "timestamp", {
-            unique: false,
-          });
-        }
-      };
-
-      openRequest.onsuccess = () => resolve(openRequest.result);
-      openRequest.onerror = () => reject("Failed to open IndexedDB");
-    });
-  };
-
   const saveMessage = async (message: Message): Promise<string> => {
-    const db = await openDB();
-
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction("conversations", "readwrite");
-      const store = transaction.objectStore("conversations");
-      let conversationFound = false;
-      store.openCursor().onsuccess = async (event) => {
-        const cursor = (event.target as IDBRequest)
-          .result as IDBCursorWithValue;
-
-        if (cursor) {
-          const storedConversation = cursor.value;
-
-          if (
-            (storedConversation.senderId === message.senderId &&
-              storedConversation.recipientId === message.recipientId) ||
-            (storedConversation.senderId === message.recipientId &&
-              storedConversation.recipientId === message.senderId)
-          ) {
-            conversationFound = true;
-            message.conversationId = storedConversation.conversationId;
-            storedConversation.messages = storedConversation.messages || [];
-            storedConversation.messages.push(message);
-            cursor.update(storedConversation);
-            resolve(message.messageId);
-            return;
-          }
-          cursor.continue();
-        } else {
-          if (!conversationFound) {
-            const conversationId = message.conversationId;
-            const newConversation = {
-              conversationId,
+    try {
+      // Fetch conversations between the sender and recipient, considering both directions
+      const { data: conversations, error: fetchError } = await supabase
+        .from("conversations")
+        .select("conversationId, messages")
+        .or(`senderId.eq.${message.senderId},recipientId.eq.${message.recipientId}`)
+        .or(`senderId.eq.${message.recipientId},recipientId.eq.${message.senderId}`)
+        .limit(1);
+  
+      if (fetchError) {
+        console.error("Error fetching conversation:", fetchError);
+        throw new Error(`Failed to fetch conversation: ${fetchError.message}`);
+      }
+  
+      let conversationId;
+  
+      if (conversations && conversations.length > 0) {
+        // If the conversation exists, update the existing conversation with the new message
+        conversationId = conversations[0].conversationId;
+        const updatedMessages = [...(conversations[0].messages || []), message];
+  
+        console.log("Updating existing conversation with new message:", updatedMessages);
+        const { error: updateError } = await supabase
+        .from("conversations")
+        .update({
+          messages: supabase.rpc("array_append", { column: "messages", value: message }),
+        })
+        .eq("conversationId", conversationId);
+      
+        if (updateError) {
+          console.error("Error updating conversation:", updateError);
+          throw new Error(`Failed to update conversation: ${updateError.message}`);
+        }
+      } else {
+        // If the conversation doesn't exist, create a new conversation
+        console.log("Creating new conversation with the message:", message);
+        const { data, error: insertError } = await supabase
+          .from("conversations")
+          .insert([
+            {
               senderId: message.senderId,
               recipientId: message.recipientId,
-              timestamp: Date.now(),
               messages: [message],
-            };
-            store.add(newConversation);
-            resolve(message.messageId);
-          }
+            },
+          ])
+          .select("conversationId")
+          .single();
+  
+        if (insertError) {
+          console.error("Error inserting new conversation:", insertError);
+          throw new Error(`Failed to create new conversation: ${insertError.message}`);
         }
-      };
-      store.openCursor().onerror = () => reject("Error fetching conversations");
-    });
+        conversationId = data.conversationId;
+      }
+  
+      console.log("Message saved successfully. Conversation ID:", conversationId);
+      return message.messageId;
+    } catch (error) {
+      console.error("Error saving message:", error);
+      throw new Error(`Failed to save message: ${error}`);
+    }
   };
+  
 
   const signUpUser = async (userData: signUpProps) => {
     try {
-      const db = await openDB();
-      const transaction = db.transaction("users", "readwrite");
-      const store = transaction.objectStore("users");
-      const emailIndex = store.index("email");
+      // 1️⃣ Check if user already exists in Supabase
+      const { data: existingUser, error: fetchError } = await supabase
+        .from("users")
+        .select("email")
+        .eq("email", userData.email)
+        .single();
 
-      const emailCheckRequest = emailIndex.get(userData.email);
-      emailCheckRequest.onsuccess = async () => {
-        if (emailCheckRequest.result) {
-          alert("User already exists! Please login.");
-        } else {
-          const request = store.put(userData);
-          request.onsuccess = async () => {
-            alert("You have successfully registered! Welcome aboard.");
-            await getAllUsers();
-          };
-          request.onerror = () => console.error("Error adding user");
-        }
-      };
+      if (fetchError && fetchError.code !== "PGRST116") {
+        console.error("Error checking user:", fetchError);
+        return { success: false, message: "Error checking user existence." };
+      }
 
-      emailCheckRequest.onerror = () =>
-        console.log("Error checking email existence");
-    } catch (error) {
-      console.error(error);
+      if (existingUser) {
+        return {
+          success: false,
+          message: "User already exists with this email.",
+        };
+      }
+
+      // 2️⃣ If user does not exist, create a new one
+      const { error: insertError } = await supabase
+        .from("users")
+        .insert([userData]);
+
+      if (insertError) {
+        console.error("Error creating user:", insertError);
+        return { success: false, message: "Error creating user." };
+      }
+
+      return { success: true, message: "Account created successfully! 🎉" };
+    } catch (err) {
+      console.error("Error in user registration:", err);
+      return { success: false, message: "Unexpected error occurred." };
     }
   };
 
@@ -125,77 +119,73 @@ const useDatabase = () => {
     navigate: (path: string) => void
   ) => {
     try {
-      const db = await openDB();
-      const transaction = db.transaction("users", "readonly");
-      const store = transaction.objectStore("users");
-      const emailIndex = store.index("email");
+      // 1️⃣ Check if user exists in Supabase
+      const { data: user, error } = await supabase
+        .from("users")
+        .select("userId, username, profilePicUrl, email, password")
+        .eq("email", email)
+        .single();
 
-      const emailCheckRequest = emailIndex.get(email);
-      emailCheckRequest.onsuccess = async () => {
-        const userRecord = emailCheckRequest.result;
+      if (error || !user) {
+        alert("Invalid email or password.");
+        return;
+      }
 
-        if (userRecord && userRecord.password === password) {
-          setSendername(userRecord.username);
-          setSenderId(userRecord.userId);
-          setSenderPicUrl(userRecord.profilePicUrl);
-          navigate("/Chat");
-          alert("Login successful!");
-          await getAllUsers();
-        } else {
-          alert("Invalid email or password.");
-        }
-      };
+      // 2️⃣ Verify Password
+      if (user.password !== password) {
+        alert("Incorrect password. Please try again.");
+        return;
+      }
 
-      emailCheckRequest.onerror = () =>
-        console.log("Error checking email existence");
-    } catch (error) {
-      console.error(error);
+      // 3️⃣ Store user session in local storage
+      setSenderId(user.userId);
+      setSendername(user.username);
+      setSenderPicUrl(user.profilePicUrl);
+
+      alert(`Logged as, ${user.username}! 🎉`);
+      navigate("/chat"); // Redirect after successful login
+    } catch (err) {
+      console.error("Error during login:", err);
+      alert("Something went wrong. Please try again.");
     }
-  };
-
-  const getAllUsers = async () => {
-    try {
-      const db = await openDB();
-      const transaction = db.transaction("users", "readonly");
-      const store = transaction.objectStore("users");
-
-      return new Promise<signUpProps[]>((resolve, reject) => {
-        const request = store.getAll();
-        request.onsuccess = () => {
-          const users = request.result;
-          setStoredUsers(users);
-          resolve(users);
-        };
-        request.onerror = () => reject("Error fetching all users");
-      });
-    } catch (error) {
-      console.error(error);
-      return [];
-    }
-  };
-  const getMessages = async (): Promise<Message[]> => {
-    return new Promise((resolve, reject) => {
-      const openRequest = indexedDB.open("chatApp", 1);
-
-      openRequest.onsuccess = () => {
-        const db = openRequest.result;
-        const transaction = db.transaction("conversations", "readonly");
-        const store = transaction.objectStore("conversations");
-        const getAllRequest = store.getAll();
-
-        getAllRequest.onsuccess = () => {
-          resolve(getAllRequest.result);
-        };
-        getAllRequest.onerror = () => reject(getAllRequest.error);
-      };
-
-      openRequest.onerror = () => reject(openRequest.error);
-    });
   };
 
   useEffect(() => {
-    getAllUsers();
+    const fetchUsers = async () => {
+      const { data: users, error } = await supabase.from("users").select();
+      if (error) {
+        console.error("Error fetching users:", error);
+      } else {
+        setStoredUsers(users);
+      }
+    };
+    fetchUsers();
   }, []);
+
+  const getMessages = async (
+    senderId: string,
+    recipientId: string
+  ): Promise<Message[]> => {
+    try {
+      const { data: conversations, error } = await supabase
+        .from("conversations")
+        .select("messages")
+        .or(`senderId.eq.${senderId},recipientId.eq.${senderId}`)
+        .or(`senderId.eq.${recipientId},recipientId.eq.${recipientId}`)
+        .limit(1);
+
+      if (error) throw error;
+
+      if (conversations && conversations.length > 0) {
+        return conversations[0].messages || [];
+      } else {
+        return []; // No conversation found
+      }
+    } catch (error) {
+      console.error("Error fetching messages:", error);
+      return [];
+    }
+  };
 
   return {
     loginUser,
@@ -203,7 +193,6 @@ const useDatabase = () => {
     storedUsers,
     saveMessage,
     getMessages,
-    getAllUsers,
   };
 };
 

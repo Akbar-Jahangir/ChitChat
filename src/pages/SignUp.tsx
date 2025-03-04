@@ -3,10 +3,7 @@ import { Input } from "../components/Input";
 import { Button } from "../components/Button";
 import { useNavigate } from "react-router-dom";
 import BlankImg from "../assets/Images/blankImg.png"
-import { uid } from "uid";
 import useDatabase from "../hooks/useDatabase";
-import { signUpProps } from "../interfaces/signUp.interface";
-
 
 const SignUp: React.FC = () => {
   const [name, setName] = useState<string>("");
@@ -19,12 +16,12 @@ const SignUp: React.FC = () => {
   const [isHovered, setIsHovered] = useState(false);
   const navigate = useNavigate();
 
-  const { signUpUser } = useDatabase()
+const {signUpUser}=useDatabase()
 
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     let isValid = true;
+  
     // Name Validation
     if (name.trim() === "") {
       setNameError("Enter your name");
@@ -35,7 +32,7 @@ const SignUp: React.FC = () => {
     } else {
       setNameError("");
     }
-
+  
     // Email Validation
     const emailPattern = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$/;
     if (!emailPattern.test(email)) {
@@ -44,10 +41,9 @@ const SignUp: React.FC = () => {
     } else {
       setEmailError("");
     }
-
+  
     // Password Validation
-    const passwordPattern =
-      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*]).{6,}$/;
+    const passwordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*]).{6,}$/;
     if (!passwordPattern.test(password)) {
       setPasswordError(
         "Password must be at least 6 characters long, contain one uppercase, one lowercase, one number, and one special character."
@@ -56,24 +52,31 @@ const SignUp: React.FC = () => {
     } else {
       setPasswordError("");
     }
-
-    if (isValid) {
-      const userId = uid();
-      const newUser: signUpProps = {
-        userId,
-        username: name,
-        email,
-        password,
-        profilePicUrl: profilePicUrl || "",
-      };
-      signUpUser(newUser); // Pass the user data to useAuth
-      setName("")
-      setEmail("")
-      setPassword("")
-      setProfilePicUrl("")
+  
+    if (!isValid) return;
+    const userData = {
+      username: name,
+      email,
+      password,
+      profilePicUrl: profilePicUrl || "",
+    };
+  
+    const result = await signUpUser(userData);
+  
+    if (!result.success) {
+      alert(result.message);
+      return;
     }
+  
+    setName("");
+    setEmail("");
+    setPassword("");
+    setProfilePicUrl("");
+  
+    alert(result.message);
+    navigate("/signIn");
+  
   };
-
   const handleProfilePicUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {

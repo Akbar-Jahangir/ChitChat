@@ -1,8 +1,6 @@
 export interface Message {
-  conversationId: string;
   messageId: string;
-  messageContent: string;
-  messageType: "text" | "video" | "file" | "image" | "audio";
+  messageContent?: string;
   senderId: string;
   recipientId: string;
   timestamp: number;

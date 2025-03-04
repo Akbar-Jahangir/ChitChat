@@ -20,10 +20,13 @@ const pusher = new Pusher({
   useTLS: true,
 });
 
+app.get("/health-check", (req, res) => {
+  res.status(200).json({ status: "ok" });
+});
 app.post("/send-message", async (req, res) => {
-  const messageData = req.body;
-  pusher
-    .trigger("chat-channel", "new-message", messageData)
+  const { messageData, channel } = req.body;
+ 
+  pusher.trigger(channel, "new-message", messageData)
     .then(() => console.log("Pusher event triggered successfully"))
     .catch((error) => console.error("Pusher Error:", error));
 

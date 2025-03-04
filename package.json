@@ -10,7 +10,11 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.49.1",
+    "@types/pdfjs-dist": "^2.10.378",
+    "dotenv": "^16.4.7",
     "express": "^4.21.2",
+    "pdfjs-dist": "^4.10.38",
     "pusher-js": "^8.4.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
