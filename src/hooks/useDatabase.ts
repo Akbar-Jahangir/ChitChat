@@ -3,7 +3,18 @@ import { useContext, useState, useEffect } from "react";
 import { signUpProps } from "../interfaces/signUp.interface";
 import { ChatUserProps } from "../interfaces/chatUser.interface";
 import { Message } from "../interfaces/message.interface";
-import{ supabase} from "../utils/client";
+import { db, query, where, getDocs } from "../utils/firebaseConfig";
+import {
+  collection,
+  doc,
+  setDoc,
+  getDoc,
+  addDoc,
+  updateDoc,
+  arrayUnion,
+} from "firebase/firestore";
+import { toast } from "react-toastify";
+import { uid } from "uid";
 
 const useDatabase = () => {
   const { setSendername, setSenderId, setSenderPicUrl } =
@@ -12,187 +23,203 @@ const useDatabase = () => {
 
   const saveMessage = async (message: Message): Promise<string> => {
     try {
-      // Fetch conversations between the sender and recipient, considering both directions
-      const { data: conversations, error: fetchError } = await supabase
-        .from("conversations")
-        .select("conversationId, messages")
-        .or(`senderId.eq.${message.senderId},recipientId.eq.${message.recipientId}`)
-        .or(`senderId.eq.${message.recipientId},recipientId.eq.${message.senderId}`)
-        .limit(1);
-  
-      if (fetchError) {
-        console.error("Error fetching conversation:", fetchError);
-        throw new Error(`Failed to fetch conversation: ${fetchError.message}`);
-      }
-  
-      let conversationId;
-  
-      if (conversations && conversations.length > 0) {
-        // If the conversation exists, update the existing conversation with the new message
-        conversationId = conversations[0].conversationId;
-        const updatedMessages = [...(conversations[0].messages || []), message];
-  
-        console.log("Updating existing conversation with new message:", updatedMessages);
-        const { error: updateError } = await supabase
-        .from("conversations")
-        .update({
-          messages: supabase.rpc("array_append", { column: "messages", value: message }),
-        })
-        .eq("conversationId", conversationId);
-      
-        if (updateError) {
-          console.error("Error updating conversation:", updateError);
-          throw new Error(`Failed to update conversation: ${updateError.message}`);
+      console.log("Saving new message:", message);
+
+      // Generate a unique conversation ID (sorted sender-recipient)
+      const conversationId =
+        message.senderId < message.recipientId
+          ? `${message.senderId}_${message.recipientId}`
+          : `${message.recipientId}_${message.senderId}`;
+
+      const conversationsRef = collection(db, "conversations");
+      const q = query(
+        conversationsRef,
+        where("participants", "array-contains", message.senderId)
+      );
+      const querySnapshot = await getDocs(q);
+
+      let conversationDocId = null;
+
+      querySnapshot.forEach((doc) => {
+        const data = doc.data();
+        if (data.participants.includes(message.recipientId)) {
+          conversationDocId = doc.id;
         }
+      });
+
+      if (!conversationDocId) {
+        // Create a new conversation
+        const newConversationRef = await addDoc(conversationsRef, {
+          conversationId,
+          participants: [message.senderId, message.recipientId],
+          messages: [message],
+        });
+
+        conversationDocId = newConversationRef.id;
       } else {
-        // If the conversation doesn't exist, create a new conversation
-        console.log("Creating new conversation with the message:", message);
-        const { data, error: insertError } = await supabase
-          .from("conversations")
-          .insert([
-            {
-              senderId: message.senderId,
-              recipientId: message.recipientId,
-              messages: [message],
-            },
-          ])
-          .select("conversationId")
-          .single();
-  
-        if (insertError) {
-          console.error("Error inserting new conversation:", insertError);
-          throw new Error(`Failed to create new conversation: ${insertError.message}`);
-        }
-        conversationId = data.conversationId;
+        // Update the existing conversation by adding a new message
+        const conversationRef = doc(db, "conversations", conversationDocId);
+        await updateDoc(conversationRef, {
+          messages: arrayUnion(message),
+        });
       }
-  
-      console.log("Message saved successfully. Conversation ID:", conversationId);
+
+      console.log(
+        "Message saved successfully to conversation:",
+        conversationDocId
+      );
       return message.messageId;
     } catch (error) {
       console.error("Error saving message:", error);
       throw new Error(`Failed to save message: ${error}`);
     }
   };
-  
 
-  const signUpUser = async (userData: signUpProps) => {
+  const signUp = async (userData: signUpProps) => {
     try {
-      // 1️⃣ Check if user already exists in Supabase
-      const { data: existingUser, error: fetchError } = await supabase
-        .from("users")
-        .select("email")
-        .eq("email", userData.email)
-        .single();
+      const userRef = doc(db, "users", userData.email);
+      const userSnap = await getDoc(userRef);
 
-      if (fetchError && fetchError.code !== "PGRST116") {
-        console.error("Error checking user:", fetchError);
-        return { success: false, message: "Error checking user existence." };
-      }
-
-      if (existingUser) {
+      if (userSnap.exists()) {
         return {
           success: false,
           message: "User already exists with this email.",
         };
       }
 
-      // 2️⃣ If user does not exist, create a new one
-      const { error: insertError } = await supabase
-        .from("users")
-        .insert([userData]);
+      // Store user data in Firestore
+      await setDoc(doc(collection(db, "users"), userData.email), {
+        username: userData.username,
+        email: userData.email,
+        password: userData.password,
+        profilePicUrl: userData.profilePicUrl,
+        userId: uid(),
+      });
 
-      if (insertError) {
-        console.error("Error creating user:", insertError);
-        return { success: false, message: "Error creating user." };
-      }
-
-      return { success: true, message: "Account created successfully! 🎉" };
-    } catch (err) {
-      console.error("Error in user registration:", err);
+      return { success: true, message: "Account created successfully!" };
+    } catch (error) {
+      console.error("Error in user registration:", error);
       return { success: false, message: "Unexpected error occurred." };
     }
   };
 
-  const loginUser = async (
-    email: string,
-    password: string,
-    navigate: (path: string) => void
-  ) => {
+  const login = async (email: string, password: string) => {
     try {
-      // 1️⃣ Check if user exists in Supabase
-      const { data: user, error } = await supabase
-        .from("users")
-        .select("userId, username, profilePicUrl, email, password")
-        .eq("email", email)
-        .single();
+      const usersRef = collection(db, "users");
+      const q = query(usersRef, where("email", "==", email));
+      const querySnapshot = await getDocs(q);
 
-      if (error || !user) {
-        alert("Invalid email or password.");
+      if (querySnapshot.empty) {
+        toast.error("Invalid email or password.");
         return;
       }
 
-      // 2️⃣ Verify Password
-      if (user.password !== password) {
-        alert("Incorrect password. Please try again.");
+      const userData = querySnapshot.docs[0].data();
+
+      // Check password manually
+      if (userData.password !== password) {
+        toast.error("Incorrect password. Please try again.");
         return;
       }
 
-      // 3️⃣ Store user session in local storage
-      setSenderId(user.userId);
-      setSendername(user.username);
-      setSenderPicUrl(user.profilePicUrl);
+      // Ensure state updates before navigating
+      setSenderId(userData.userId);
+      setSendername(userData.username);
+      setSenderPicUrl(userData.profilePicUrl);
 
-      alert(`Logged as, ${user.username}! 🎉`);
-      navigate("/chat"); // Redirect after successful login
+      toast.success(`Logged in as ${userData.username}!`);
     } catch (err) {
       console.error("Error during login:", err);
-      alert("Something went wrong. Please try again.");
+      toast.error("Something went wrong. Please try again.");
     }
   };
 
   useEffect(() => {
     const fetchUsers = async () => {
-      const { data: users, error } = await supabase.from("users").select();
-      if (error) {
+      try {
+        const usersCollection = collection(db, "users");
+        const usersSnapshot = await getDocs(usersCollection);
+        const usersList = usersSnapshot.docs.map((doc) => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            userId: data.userId,
+            username: data.username,
+            profilePicUrl: data.profilePicUrl,
+            email: data.email,
+          } as ChatUserProps;
+        });
+        setStoredUsers(usersList);
+      } catch (error) {
         console.error("Error fetching users:", error);
-      } else {
-        setStoredUsers(users);
       }
     };
+
     fetchUsers();
   }, []);
 
-  const getMessages = async (
+  const getChatHistory = async (
     senderId: string,
     recipientId: string
   ): Promise<Message[]> => {
     try {
-      const { data: conversations, error } = await supabase
-        .from("conversations")
-        .select("messages")
-        .or(`senderId.eq.${senderId},recipientId.eq.${senderId}`)
-        .or(`senderId.eq.${recipientId},recipientId.eq.${recipientId}`)
-        .limit(1);
+      const conversationsRef = collection(db, "conversations");
 
-      if (error) throw error;
+      // Query messages where senderId and recipientId match either way
+      const q = query(
+        conversationsRef,
+        where("participants", "array-contains", senderId)
+      );
 
-      if (conversations && conversations.length > 0) {
-        return conversations[0].messages || [];
-      } else {
-        return []; // No conversation found
-      }
+      const querySnapshot = await getDocs(q);
+
+      const messages: Message[] = [];
+      querySnapshot.forEach((doc) => {
+        const conversation = doc.data();
+        if (
+          conversation.participants.includes(recipientId) &&
+          conversation.messages
+        ) {
+          messages.push(...conversation.messages);
+        }
+      });
+
+      return messages;
     } catch (error) {
       console.error("Error fetching messages:", error);
       return [];
     }
   };
 
+
+const getAllMessages = async (): Promise<Message[]> => {
+  try {
+    const conversationsRef = collection(db, "conversations");
+
+    const querySnapshot = await getDocs(conversationsRef);
+
+    const messages: Message[] = [];
+    querySnapshot.forEach((doc) => {
+      const conversation = doc.data();
+      if (conversation.messages) {
+        messages.push(...conversation.messages);
+      }
+    });
+
+    return messages;
+  } catch (error) {
+    console.error("Error fetching messages:", error);
+    return [];
+  }
+};
+
   return {
-    loginUser,
-    signUpUser,
+    login,
+    signUp,
     storedUsers,
     saveMessage,
-    getMessages,
+    getChatHistory,
+    getAllMessages,
   };
 };
 

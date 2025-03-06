@@ -1,3 +1,3 @@
-export interface sidebarProps{
-    alignment:"left" | "right";
+export interface SidebarProps{
+    alignment:"left" | "right" | null
 }

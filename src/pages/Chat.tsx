@@ -23,7 +23,10 @@ const Chat: React.FC = () => {
     <div className="w-full flex h-screen">
       <Sidebar alignment="left" />
       {recipientId &&
+      <>
         <ChatWindow />
+        <Sidebar alignment="right" />
+        </>
       }
     </div>
   );

@@ -2,89 +2,101 @@ import React, { useState } from "react";
 import { Input } from "../components/Input";
 import { Button } from "../components/Button";
 import { useNavigate } from "react-router-dom";
-import BlankImg from "../assets/Images/blankImg.png"
+import BlankImg from "../assets/Images/blankImg.png";
 import useDatabase from "../hooks/useDatabase";
+import { storage } from "../utils/firebaseConfig";
+import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { uid } from "uid";
+import { toast } from "react-toastify";;
 
 const SignUp: React.FC = () => {
   const [name, setName] = useState<string>("");
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
-  const [profilePicUrl, setProfilePicUrl] = useState<string | null>(null);
+  const [profilePic, setProfilePic] = useState<File | null>(null);
+  const [profilePicUrl, setProfilePicUrl] = useState<string>("");
   const [nameError, setNameError] = useState<string>("");
   const [emailError, setEmailError] = useState<string>("");
   const [passwordError, setPasswordError] = useState<string>("");
   const [isHovered, setIsHovered] = useState(false);
+  const [loading, setLoading] = useState<boolean>(false); // ✅ Loading state
   const navigate = useNavigate();
+  const { signUp } = useDatabase();
 
-const {signUpUser}=useDatabase()
+  const uploadImageAndGetURL = async (file: File) => {
+    const storageRef = ref(storage, `userProfilePics/${uid()}`); // ✅ Add parentheses after uid()
+    const snapshot = await uploadBytes(storageRef, file);
+    return await getDownloadURL(snapshot.ref);
+  };
+
+  const handleProfilePicChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files?.[0]) {
+      const file = e.target.files[0];
+      setProfilePic(file);
+      
+      // Show the selected image immediately
+      const localUrl = URL.createObjectURL(file);
+      setProfilePicUrl(localUrl);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     let isValid = true;
-  
-    // Name Validation
+
+    // Validate inputs
     if (name.trim() === "") {
       setNameError("Enter your name");
       isValid = false;
-    } else if (name.trim().length < 2) {
-      setNameError("Name should be at least 2 characters long");
-      isValid = false;
-    } else {
-      setNameError("");
     }
-  
-    // Email Validation
-    const emailPattern = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$/;
-    if (!emailPattern.test(email)) {
+    if (!email.match(/^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$/)) {
       setEmailError("Email is invalid");
       isValid = false;
-    } else {
-      setEmailError("");
     }
-  
-    // Password Validation
-    const passwordPattern = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*]).{6,}$/;
-    if (!passwordPattern.test(password)) {
-      setPasswordError(
-        "Password must be at least 6 characters long, contain one uppercase, one lowercase, one number, and one special character."
-      );
+    if (!password.match(/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*]).{6,}$/)) {
+      setPasswordError("Weak password");
       isValid = false;
-    } else {
-      setPasswordError("");
     }
-  
+
     if (!isValid) return;
-    const userData = {
-      username: name,
-      email,
-      password,
-      profilePicUrl: profilePicUrl || "",
-    };
-  
-    const result = await signUpUser(userData);
-  
-    if (!result.success) {
-      alert(result.message);
-      return;
-    }
-  
-    setName("");
-    setEmail("");
-    setPassword("");
-    setProfilePicUrl("");
-  
-    alert(result.message);
-    navigate("/signIn");
-  
-  };
-  const handleProfilePicUrlChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setProfilePicUrl(reader.result as string);
+
+    setLoading(true);
+    try {
+      let uploadedImageUrl = profilePicUrl;
+
+      // Upload image if selected
+      if (profilePic) {
+        uploadedImageUrl = await uploadImageAndGetURL(profilePic);
+        setProfilePicUrl(uploadedImageUrl);
+      }
+      const userData = {
+        username: name,
+        email,
+        password,
+        profilePicUrl: uploadedImageUrl,
       };
-      reader.readAsDataURL(file);
+
+      // Register user
+      const result = await signUp(userData);
+
+      if (!result.success) {
+        toast.error(result.message);
+        return;
+      }
+
+      // Reset fields
+      setName("");
+      setEmail("");
+      setPassword("");
+      setProfilePic(null);
+      setProfilePicUrl("");
+
+      toast.success("Sign up successful!");
+      navigate("/signIn");
+    } catch  {
+      toast.error("Error during signup. Please try again.");
+    } finally {
+      setLoading(false); // ✅ Stop loading
     }
   };
 
@@ -101,16 +113,12 @@ const {signUpUser}=useDatabase()
           onMouseLeave={() => setIsHovered(false)}
         >
           <img src={profilePicUrl || BlankImg} alt="Profile" className="w-full h-full object-cover" />
-          {/* Hidden File Input */}
           <label className={`absolute h-[50%] top-[50%]  w-full p-2 cursor-pointer ${isHovered && " bg-black bg-opacity-50 gap-x-1 text-white text-sm"}`}>
-            📷 {isHovered && (
-              <span className="text-white">
-                update
-              </span>
-            )}
-            <Input type="file" accept="image/*" onChange={handleProfilePicUrlChange} className="hidden" />
+            📷 {isHovered && <span className="text-white">update</span>}
+            <Input type="file" accept="image/*" onChange={handleProfilePicChange} className="hidden" />
           </label>
         </div>
+
         {/* Name Field */}
         <div className="w-full">
           <Input
@@ -118,8 +126,7 @@ const {signUpUser}=useDatabase()
             placeholder="Full Name"
             onChange={(e) => setName(e.target.value)}
             value={name}
-            className={`form-input ${nameError ? "error-input" : ""
-              }`}
+            className={`form-input ${nameError ? "error-input" : ""}`}
           />
           {nameError && <p className="error-text">{nameError}</p>}
         </div>
@@ -131,8 +138,7 @@ const {signUpUser}=useDatabase()
             placeholder="Email"
             onChange={(e) => setEmail(e.target.value)}
             value={email}
-            className={`form-input ${emailError ? "error-input" : ""
-              }`}
+            className={`form-input ${emailError ? "error-input" : ""}`}
           />
           {emailError && <p className="error-text">{emailError}</p>}
         </div>
@@ -144,19 +150,19 @@ const {signUpUser}=useDatabase()
             placeholder="Password"
             onChange={(e) => setPassword(e.target.value)}
             value={password}
-            className={`form-input ${passwordError ? "error-input" : ""
-              }`}
+            className={`form-input ${passwordError ? "error-input" : ""}`}
           />
-          {passwordError && (
-            <p className="error-text">{passwordError}</p>
-          )}
+          {passwordError && <p className="error-text">{passwordError}</p>}
         </div>
 
         {/* Sign Up Button */}
         <Button
           type="submit"
-          className="bg-primary p-1 text-lg font-semibold rounded text-white w-full flex justify-center"
-          btnText="Sign Up"
+          className={`bg-primary p-1 text-lg font-semibold rounded text-white w-full flex justify-center ${
+            loading ? "opacity-50 cursor-not-allowed" : ""
+          }`}
+          btnText={loading ? "Signing Up..." : "Sign Up"}
+          disabled={loading} // ✅ Disable button during signup
         />
       </form>
 

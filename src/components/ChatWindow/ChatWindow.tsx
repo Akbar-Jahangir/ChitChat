@@ -1,4 +1,3 @@
-
 import React, { useCallback, useContext, useEffect, useState } from "react";
 import Pusher from "pusher-js";
 import { Button } from "../Button";
@@ -14,28 +13,36 @@ import {
 } from "../Svgs";
 import { Header } from "../Header";
 import { SenderContext, RecipientContext } from "../../contexts/ChatContext";
-import { Sidebar } from "../Sidebar";
 import { uid } from "uid";
 import useDatabase from "../../hooks/useDatabase";
 import { Message } from "../../interfaces/message.interface";
-import { ChatMessage } from "../ChatMessage";
+import { ChatMessage } from "../MessageBubble";
 import { Textarea } from "../Textarea/Textarea";
-import { supabase } from "../../utils/client";
+import { ref, uploadBytes, getDownloadURL, storage } from "../../utils/firebaseConfig";
 import FilePreview from "../FilePreview/FilePreview";
+
+// Define an interface for grouped messages
+interface MessageGroup {
+    date: string;
+    messages: Message[];
+    timestamp: number; // Used for sorting
+}
+
 export const ChatWindow: React.FC = () => {
     const [outgoingMessage, setOutgoingMessage] = useState<string>("");
-    const { saveMessage, getMessages } = useDatabase();
     const [storedMessages, setStoredMessages] = useState<Message[]>([]);
-    const [fileUrl, setFileUrl] = useState<string>("")
+    const [groupedMessages, setGroupedMessages] = useState<MessageGroup[]>([]);
+    const [localFileUrl, setLocalFileUrl] = useState<string>("");
+    const [uploadedFileUrl, setUploadedFileUrl] = useState<string>("");
 
-    const { recipientname,
+    const { saveMessage, getChatHistory } = useDatabase();
+
+    const {
+        recipientname,
         recipientId,
-        recipientPicUrl, } =
-        useContext(RecipientContext);
+        recipientPicUrl,
+    } = useContext(RecipientContext);
     const { senderId } = useContext(SenderContext);
-
-
-
 
     const userInfo = {
         userId: recipientId,
@@ -44,9 +51,68 @@ export const ChatWindow: React.FC = () => {
     };
 
     const messageTypeBtnData = [
-        { id: 1, icon: <AttachmentIconSvg />, accept: "image/*,video/*,audio/*,.pdf,.docx,.xlsx" },
+        { id: 1, icon: <AttachmentIconSvg />, accept: "image/*,video/*,.mp3,.pdf,.docx,.xlsx" },
         { id: 2, icon: <CameraIconSvg />, accept: "image/*" },
     ];
+
+    // Format date for message grouping
+    const formatMessageDate = (timestamp: number): { display: string; timestamp: number } => {
+        const messageDate = new Date(timestamp);
+        const today = new Date();
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+
+        // Reset hours to compare just the dates
+        const messageDay = new Date(messageDate.getFullYear(), messageDate.getMonth(), messageDate.getDate());
+        const todayDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+        const yesterdayDay = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate());
+
+        // We'll use the timestamp at midnight of each day for sorting
+        const midnightTimestamp = new Date(
+            messageDate.getFullYear(),
+            messageDate.getMonth(),
+            messageDate.getDate()
+        ).getTime();
+
+        if (messageDay.getTime() === todayDay.getTime()) {
+            return { display: "", timestamp: midnightTimestamp }; // Return empty string for today
+        } else if (messageDay.getTime() === yesterdayDay.getTime()) {
+            return { display: "Yesterday", timestamp: midnightTimestamp };
+        } else {
+            // Format as "March 7, 2025" for older dates
+            return {
+                display: messageDate.toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                }),
+                timestamp: midnightTimestamp
+            };
+        }
+    };
+
+    // Group messages by date
+    const groupMessagesByDate = useCallback((messages: Message[]) => {
+        const groups: Record<string, { messages: Message[], timestamp: number }> = {};
+
+        messages.forEach(message => {
+            const { display, timestamp } = formatMessageDate(message.timestamp);
+            if (!groups[display]) {
+                groups[display] = { messages: [], timestamp };
+            }
+            groups[display].messages.push(message);
+        });
+
+
+        return Object.entries(groups)
+            .map(([date, { messages, timestamp }]) => ({
+                date,
+                messages: messages.sort((a, b) => a.timestamp - b.timestamp),
+                timestamp
+            }))
+            .sort((a, b) => a.timestamp - b.timestamp); // Oldest to newest
+    }, []);
+
     const checkServerStatus = async () => {
         try {
             const response = await fetch("http://localhost:5000/health-check", {
@@ -85,7 +151,7 @@ export const ChatWindow: React.FC = () => {
             });
 
             if (!response.ok) {
-                throw new Error(`Failed to send message.`);
+                throw new Error("Failed to send message.");
             }
 
             const responseData = await response.json();
@@ -98,11 +164,10 @@ export const ChatWindow: React.FC = () => {
         }
     };
 
-
     const handleSubmit = useCallback(async (e: React.FormEvent) => {
         e.preventDefault();
 
-        if (!outgoingMessage.trim() && !fileUrl) return;
+        if (!outgoingMessage.trim() && !uploadedFileUrl) return;
 
         const messageData: Message = {
             messageId: uid(),
@@ -110,44 +175,53 @@ export const ChatWindow: React.FC = () => {
             senderId: senderId,
             messageContent: outgoingMessage.trim(),
             timestamp: Date.now(),
-            fileUrl: fileUrl,
+            fileUrl: uploadedFileUrl,
         };
 
         const sent = await sendMessageToServer(messageData);
         if (sent) {
-            setStoredMessages((prevMessages) => [...prevMessages, messageData].sort((a, b) => a.timestamp - b.timestamp));
+            setStoredMessages((prevMessages) => {
+                const newMessages = [...prevMessages, messageData].sort((a, b) => a.timestamp - b.timestamp);
+                return newMessages;
+            });
             saveMessage(messageData);
 
             setOutgoingMessage("");
-            setFileUrl("");
+            setUploadedFileUrl("");
+            setLocalFileUrl("");
         }
-    }, [outgoingMessage, fileUrl, senderId, recipientId]);
+    }, [outgoingMessage, uploadedFileUrl, recipientId, senderId, saveMessage]);
+
+    const uploadFile = async (file: File): Promise<string> => {
+        try {
+            const fileRef = ref(storage, `chat-uploads/${Date.now()}_${file.name}`);
+            await uploadBytes(fileRef, file);
+            return await getDownloadURL(fileRef);
+        } catch (error) {
+            console.error("Error uploading file:", error);
+            throw new Error("File upload failed");
+        }
+    };
+
+    const convertFileToBase64 = (file: File): Promise<string> => {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file); // Convert to Base64
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = (error) => reject(error);
+        });
+    };
 
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
+
         if (!file) return;
+        const url = await convertFileToBase64(file);
 
-        const fileExt = file.name.split(".").pop();
-        const fileName = `${uid()}.${fileExt}`;
-        const filePath = `uploads/${fileName}`;
-
+        setLocalFileUrl(url);
+        const fileUrl = await uploadFile(file);
+        setUploadedFileUrl(fileUrl);
         e.target.value = "";
-
-        const { error } = await supabase.storage
-            .from("chat-uploads")
-            .upload(filePath, file, { cacheControl: "3600", upsert: false });
-
-        if (error) {
-            console.error("File upload failed:", error);
-            alert("Failed to upload file.");
-            return;
-        }
-
-        const { data } = supabase.storage.from("chat-uploads").getPublicUrl(filePath);
-
-        if (data?.publicUrl) {
-            setFileUrl(data.publicUrl)
-        }
     };
 
     const getChannelName = (userId1: string, userId2: string) => {
@@ -157,7 +231,7 @@ export const ChatWindow: React.FC = () => {
 
     useEffect(() => {
         const fetchMessages = async () => {
-            const allMessages = await getMessages(senderId, recipientId);
+            const allMessages = await getChatHistory(senderId, recipientId);
             console.log("All messages from database:", allMessages);
             const filteredMessages = allMessages.filter(
                 (msg) =>
@@ -167,7 +241,6 @@ export const ChatWindow: React.FC = () => {
 
             filteredMessages.sort((a, b) => a.timestamp - b.timestamp);
             setStoredMessages(filteredMessages);
-            console.log("Filtered messages:", filteredMessages);
         };
 
         fetchMessages();
@@ -181,6 +254,7 @@ export const ChatWindow: React.FC = () => {
                 if (prevMessages.some((msg) => msg.messageId === data.messageId)) {
                     return prevMessages;
                 }
+
                 return [...prevMessages, data].sort((a, b) => a.timestamp - b.timestamp);
             });
         });
@@ -188,17 +262,21 @@ export const ChatWindow: React.FC = () => {
         return () => {
             channel.unbind_all();
             channel.unsubscribe();
-            pusher.disconnect();
         };
-    }, [recipientId, senderId]);
+    }, [recipientId, senderId, getChatHistory]);
 
+    useEffect(() => {
+        setGroupedMessages(groupMessagesByDate(storedMessages));
+    }, [storedMessages, groupMessagesByDate]);
 
+    useEffect(() => {
+        setLocalFileUrl("")
+    }, [recipientId]);
 
     return (
-        <div className="w-full flex">
-            <div className="w-[80%] flex flex-col items-center relative">
-                <div className="w-[95%] sticky top-0 bg-white">
-
+        <div className="w-[100%] lg:w-[75%] flex">
+            <div className="w-[100%] flex flex-col items-center relative">
+                <div className="w-[95%] sticky top-0 bg-white z-10">
                     <Header userInfo={userInfo} actionIcons={[
                         { id: "1", icon: <SearchIconSvg /> },
                         { id: "2", icon: <FavoriteIconSvg width="22px" height="19px" color="#BABABA" /> },
@@ -206,14 +284,37 @@ export const ChatWindow: React.FC = () => {
                     ]} />
                     <div className="h-[1px] w-full bg-lightGray"></div>
                 </div>
-                <div className="w-[100%] flex flex-col items-center h-[80vh] overflow-y-scroll custom-scrollbar">
-                    {storedMessages &&
-                        storedMessages.map((msg) => (
-                            <ChatMessage key={msg.messageId} senderId={msg.senderId} messageContent={msg.messageContent} picUrl={msg.fileUrl} />
-                        ))}
+                <div className="w-[100%] flex justify-center overflow-y-scroll custom-scrollbar">
+                <div className="w-[95%] flex flex-col items-center h-[80vh] ">
+                    {groupedMessages.map((group) => (
+                        <div key={group.date} className="w-full">
+                            {group.messages.map((msg) => (
+                                <ChatMessage
+                                    key={msg.messageId}
+                                    senderId={msg.senderId}
+                                    messageContent={msg.messageContent}
+                                    fileUrl={msg.fileUrl}
+                                />
+                            ))}
+
+                            {/* Only render the date header if the date is not empty */}
+                            {group.date && (
+                                <div className="flex justify-center my-4 items-center">
+                                    <span className="bg-slate w-full h-[1px]"></span>
+                                    <span className="bg-gray-100 rounded-full px-1 py-1 text-sm text-slate">
+                                        {group.date}
+                                    </span>
+                                    <span className="bg-slate w-full h-[1px]"></span>
+                                </div>
+                            )}
+                        </div>
+                    ))}
                 </div>
-                {fileUrl && (
-                    <FilePreview fileUrl={fileUrl} />
+                </div>
+                {localFileUrl && (
+                    <div className="mb-16 bg-lavenderBlue w-full flex justify-center pt-2">
+                        <FilePreview fileUrl={localFileUrl} />
+                    </div>
                 )}
 
                 <div className="bg-lavenderBlue w-full flex flex-col items-center justify-center py-1 absolute bottom-0">
@@ -245,8 +346,6 @@ export const ChatWindow: React.FC = () => {
                     </form>
                 </div>
             </div>
-            <Sidebar alignment="right" />
         </div>
     );
 };
-

@@ -1,9 +1,10 @@
 import React, { useContext, useState } from "react";
 import BlankImg from "../../assets/Images/blankImg.png";
-import { ChatMessageProps } from "./chatMessage.interface";
+import { MessageBubbleProps } from "./messageBubble.interface";
 import { SenderContext, RecipientContext } from "../../contexts/ChatContext";
+import DocViewer, { DocViewerRenderers } from "react-doc-viewer";
 
-export const ChatMessage: React.FC<ChatMessageProps> = React.memo(({ messageContent, senderId, picUrl }) => {
+export const ChatMessage: React.FC<MessageBubbleProps> = React.memo(({ messageContent, senderId, fileUrl }) => {
     const [isExpanded, setIsExpanded] = useState<boolean>(false);
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
     const { senderId: currentUserId, senderPicUrl } = useContext(SenderContext);
@@ -14,6 +15,26 @@ export const ChatMessage: React.FC<ChatMessageProps> = React.memo(({ messageCont
         setIsExpanded(!isExpanded);
     };
 
+    const isImage = (fileUrl: string) => {
+        return [".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp", ".svg", ".tiff", ".ico"].some(ext => fileUrl.toLowerCase().includes(ext));
+    };
+
+    const isVideo = (fileUrl: string) => {
+        return [".mp4", ".mov", ".avi"].some(ext => fileUrl.toLowerCase().includes(ext));
+    };
+
+
+    const isDocument = (fileUrl: string) => {
+        return [".pdf", ".doc", ".docx", ".xls", ".xlsx", ".ppt", ".pptx", ".txt", ".csv"].some(ext =>
+            fileUrl.toLowerCase().includes(ext)
+        );
+    };
+    const isAudio = (fileUrl: string) => {
+        return [".mp3"].some(ext =>
+            fileUrl.toLowerCase().includes(ext)
+        );
+    };
+    const docs = fileUrl ? [{ uri: fileUrl }] : [];
     return (
         <>
             {/* Chat Message */}
@@ -22,29 +43,44 @@ export const ChatMessage: React.FC<ChatMessageProps> = React.memo(({ messageCont
                     {senderId === currentUserId ? (
                         <div className="flex items-end gap-x-1">
                             <div className="mt-2 max-w-xs">
-                                {picUrl && (
-                                    picUrl.match(/\.(jpeg|jpg|png|gif)$/) ? (
+                                {fileUrl && (
+                                    isImage(fileUrl) ? (
                                         <img
-                                            src={picUrl}
+                                            src={fileUrl}
                                             alt="Uploaded"
-                                            className="rounded-lg w-full cursor-pointer"
-                                            onClick={() => setSelectedImage(picUrl)} // Open full-screen modal
+                                            className="rounded-lg max-w-[200px] cursor-pointer"
+                                            onClick={() => setSelectedImage(fileUrl)}
                                         />
-                                    ) : picUrl.match(/\.(mp4|mov|avi)$/) ? (
+                                    ) : isVideo(fileUrl) ? (
                                         <video controls className="rounded-lg w-full">
-                                            <source src={picUrl} type="video/mp4" />
+                                            <source src={fileUrl} type="video/mp4" />
                                             Your browser does not support the video tag.
                                         </video>
-                                    ) : picUrl.match(/\.(mp3|wav)$/) ? (
-                                        <audio controls className="w-full">
-                                            <source src={picUrl} type="audio/mp3" />
-                                            Your browser does not support the audio element.
-                                        </audio>
-                                    ) : (
-                                        <a href={picUrl} target="_blank" rel="noopener noreferrer" className="text-blue-500 block">
-                                            View Document
+                                    ) : isDocument(fileUrl) ? (
+                                        <a
+                                            href={fileUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-primary block  items-center gap-2"
+                                        >
+                                            📄 View Document
                                         </a>
-                                    )
+                                    ) : isAudio(fileUrl) ?(
+                                       
+                                         <audio controls>
+                                         <source src={fileUrl} type="audio/mp3" />
+                                         Your browser does not support the audio element.
+                                     </audio>
+                                    ):
+                                    <a
+                                            href={fileUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-primary block"
+                                        >
+                                            File
+                                        </a>
+
                                 )}
 
                                 {messageContent && (
@@ -66,27 +102,29 @@ export const ChatMessage: React.FC<ChatMessageProps> = React.memo(({ messageCont
                         <div className="flex items-end gap-x-1">
                             <img src={recipientPicUrl || BlankImg} className="w-[25px] h-[25px] rounded-full" />
                             <div className="mt-2 max-w-xs">
-                                {picUrl && (
-                                    picUrl.match(/\.(jpeg|jpg|png|gif)$/) ? (
+                            {fileUrl && (
+                                    isImage(fileUrl) ? (
                                         <img
-                                            src={picUrl}
+                                            src={fileUrl}
                                             alt="Uploaded"
-                                            className="rounded-lg w-full cursor-pointer"
-                                            onClick={() => setSelectedImage(picUrl)} // Open full-screen modal
+                                            className="rounded-lg max-w-[200px] cursor-pointer"
+                                            onClick={() => setSelectedImage(fileUrl)}
                                         />
-                                    ) : picUrl.match(/\.(mp4|mov|avi)$/) ? (
+                                    ) : isVideo(fileUrl) ? (
                                         <video controls className="rounded-lg w-full">
-                                            <source src={picUrl} type="video/mp4" />
+                                            <source src={fileUrl} type="video/mp4" />
                                             Your browser does not support the video tag.
                                         </video>
-                                    ) : picUrl.match(/\.(mp3|wav)$/) ? (
-                                        <audio controls className="w-full">
-                                            <source src={picUrl} type="audio/mp3" />
-                                            Your browser does not support the audio element.
-                                        </audio>
+                                    ) : isDocument(fileUrl) ? (
+                                        <DocViewer documents={docs} pluginRenderers={DocViewerRenderers} />
                                     ) : (
-                                        <a href={picUrl} target="_blank" rel="noopener noreferrer" className="text-primary block">
-                                            View Document
+                                        <a
+                                            href={fileUrl}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="text-primary block"
+                                        >
+                                            Audio
                                         </a>
                                     )
                                 )}
@@ -108,7 +146,6 @@ export const ChatMessage: React.FC<ChatMessageProps> = React.memo(({ messageCont
                     )}
                 </div>
             </div>
-
 
             {selectedImage && (
                 <div

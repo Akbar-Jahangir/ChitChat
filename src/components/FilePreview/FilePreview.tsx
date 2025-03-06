@@ -1,86 +1,74 @@
-import { useState, useEffect } from "react";
+
 import { FilePreviewProps } from "./filePreview.interface";
 
 const FilePreview: React.FC<FilePreviewProps> = ({ fileUrl }) => {
-    const [docPreview, setDocPreview] = useState<string | null>(null);
-    const [pdfFirstPage, setPdfFirstPage] = useState<string | null>(null);
 
-    useEffect(() => {
-        if (fileUrl?.endsWith(".pdf")) {
-            loadPdfFirstPage(fileUrl);
-        } else if (fileUrl?.endsWith(".docx")) {
-            loadDocxText(fileUrl);
-        }
-    }, [fileUrl]);
-
-    // 📌 Load first page of PDF (fix import issue)
-    const loadPdfFirstPage = async (pdfUrl: string) => {
-        const pdfjsLib = await import("pdfjs-dist/build/pdf");
-        pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
-
-        const pdf = await pdfjsLib.getDocument(pdfUrl).promise;
-        const page = await pdf.getPage(1);
-        const scale = 1.5;
-        const viewport = page.getViewport({ scale });
-
-        const canvas = document.createElement("canvas");
-        const context = canvas.getContext("2d");
-        if (!context) return;
-
-        canvas.width = viewport.width;
-        canvas.height = viewport.height;
-
-        await page.render({ canvasContext: context, viewport }).promise;
-        setPdfFirstPage(canvas.toDataURL()); // Convert canvas to image
+    const isImage = (fileUrl: string) => {
+        return ["image/png", "image/jpg", "image/jpeg", "image/gif", "image/bmp", "image/webp", "image/svg", "image/tiff", "image/ico"].some(ext => fileUrl.toLowerCase().includes(ext));
     };
 
-    // 📌 Extract first 300 characters from DOCX text
-    const loadDocxText = async (docxUrl: string) => {
-        const response = await fetch(docxUrl);
-        const blob = await response.blob();
+    const isVideo = (fileUrl: string) => {
+        return ["video/mp4", "video/mov", "video/avi"].some(ext => fileUrl.toLowerCase().includes(ext));
+    };
 
-        const reader = new FileReader();
-        reader.onload = (event) => {
-            if (!event.target?.result) return;
-            const content = event.target.result.toString();
-            setDocPreview(content.slice(0, 300) + "..."); // Limit preview
-        };
-        reader.readAsText(blob);
+
+    const isPdf = (fileUrl: string) => {
+        return ["application/pdf"].some(ext =>
+            fileUrl.toLowerCase().includes(ext)
+        );
+    };
+    const isAudio = (fileUrl: string) => {
+        return ["audio/mp3", "audio/mpeg"].some(ext =>
+            fileUrl.toLowerCase().includes(ext)
+        );
     };
 
     return (
-        fileUrl && (
-            <div className="max-w-[95%] bg-white border rounded mb-16 p-4">
-                {fileUrl.match(/\.(jpeg|jpg|png|gif)$/) ? (
-                    <img src={fileUrl} alt="Uploaded" className="max-w-xs rounded-lg" />
-                ) : fileUrl.match(/\.(mp4|mov|avi)$/) ? (
-                    <video controls className="max-w-xs">
+        <div className="p-4 border border-gray rounded">
+            {fileUrl && (
+                isImage(fileUrl) ? (
+                    <img
+
+                        src={fileUrl}
+                        alt="Uploaded"
+                        className="rounded-lg max-w-[200px]"
+
+                    />
+                ) : isVideo(fileUrl) ? (
+                    <video controls className="rounded-lg w-[300px]">
                         <source src={fileUrl} type="video/mp4" />
                         Your browser does not support the video tag.
                     </video>
-                ) : fileUrl.match(/\.(mp3|wav)$/) ? (
+                ) : isPdf(fileUrl) ? (
+                    <a
+                        href={fileUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary block"
+                    >
+                        View Document
+                    </a>
+
+                ) : isAudio(fileUrl) ? (
+
                     <audio controls>
                         <source src={fileUrl} type="audio/mp3" />
                         Your browser does not support the audio element.
                     </audio>
-                ) : fileUrl.match(/\.(pdf)$/) ? (
-                    pdfFirstPage ? (
-                        <img src={pdfFirstPage} alt="PDF Preview" className="w-full h-auto" />
-                    ) : (
-                        <p>Loading PDF preview...</p>
-                    )
-                ) : fileUrl.match(/\.(docx)$/) ? (
-                    <div className="border p-2 max-h-[400px] overflow-auto">
-                        {docPreview || "Loading document preview..."}
-                    </div>
-                ) : (
-                    <a href={fileUrl} target="_blank" rel="noopener noreferrer" className="text-primary">
+                ) :
+                    <a
+                        href={fileUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary block"
+                    >
                         View Document
                     </a>
-                )}
-            </div>
-        )
-    );
+
+            )}
+        </div>
+    )
+
 };
 
 export default FilePreview;

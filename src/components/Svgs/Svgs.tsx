@@ -179,4 +179,3 @@ export const VoiceIconSvg: React.FC = () => {
     </svg>
   );
 };
-

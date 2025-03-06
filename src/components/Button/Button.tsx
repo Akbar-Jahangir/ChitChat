@@ -7,10 +7,11 @@ export const Button: React.FC<ButtonProps> = ({
   btnText,
   className,
   type = "button",
-  onClick
+  onClick,
+  disabled=false
 }) => {
   return (
-    <button type={type} className={className} onClick={onClick}>
+    <button type={type} className={className} onClick={onClick} disabled={disabled}>
       {icon && <div className={iconClass}>{icon}</div>}
       <p>{btnText}</p>
     </button>

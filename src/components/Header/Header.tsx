@@ -11,7 +11,7 @@ export const Header: React.FC<HeaderProps> = ({
 }) => {
 
   return (
-    <header className="flex items-center justify-between w-[100%] pb-[7px] pt-[14px]" id={userInfo.userId}>
+    <header className="flex items-center justify-between w-[95%] pb-[7px] pt-[14px]" id={userInfo.userId}>
       <div className="flex justify-between">
         <div className="flex items-center gap-2">
           <img
@@ -19,10 +19,11 @@ export const Header: React.FC<HeaderProps> = ({
             alt="profilePic"
             className="h-[45px] w-[45px] rounded-full"
           />
-          <div>
-            <p className="text-[15px] font-semibold text-primary">{userInfo.username}</p>
 
-          </div>
+          <p className="text-sm font-semibold text-primary max-w-[70%] overflow-hidden text-ellipsis whitespace-nowrap">
+            {userInfo.username}
+          </p>
+
           {onlineStatus && <OnlineIconSvg />}
         </div>
       </div>

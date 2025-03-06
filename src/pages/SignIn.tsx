@@ -3,32 +3,43 @@ import { Input } from "../components/Input";
 import { Button } from "../components/Button";
 import { useNavigate } from "react-router-dom";
 import useDatabase from "../hooks/useDatabase";
+import { toast } from "react-toastify";
 
 const SignIn: React.FC = () => {
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const [isEmail, setIsEmail] = useState<boolean>(true);
   const [isPassword, setIsPassword] = useState<boolean>(true);
+  const [loading, setLoading] = useState<boolean>(false); // 🔥 Loading state
 
-  const { loginUser } = useDatabase()
-  const navigate = useNavigate()
+  const { login } = useDatabase();
+  const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (email === "") {
-      setIsEmail(false);
+    if (!email.trim()) {
+      toast.error("Please provide your email address.");
       return;
     } else {
       setIsEmail(true);
     }
-    if (password.trim() == "") {
-      setIsPassword(false);
+    if (!password.trim()) {
+      toast.error("Please provide your password.");
       return;
     } else {
       setIsPassword(true);
     }
-    loginUser(email, password, navigate)
+
+    setLoading(true);
+    try {
+      await login(email, password);
+      navigate("/chat");
+    } catch  {
+      toast.error("Login failed. Please check your credentials.");
+    } finally {
+      setLoading(false); 
+    }
   };
 
   return (
@@ -44,42 +55,44 @@ const SignIn: React.FC = () => {
             type="email"
             placeholder="Email"
             onChange={(e) => {
-              setEmail(e.target.value)
-              setIsEmail(true)
+              setEmail(e.target.value);
+              setIsEmail(true);
             }}
             value={email}
-            className={`form-input ${!isEmail ? "error-input" : ""
-              }`}
+            className={`form-input ${!isEmail ? "error-input" : ""}`}
           />
-          {!isEmail && (
-            <p className="error-text">provide your email address</p>
-          )}
         </div>
         <div className="w-full">
           <Input
             type="password"
             placeholder="Password"
             onChange={(e) => {
-              setPassword(e.target.value)
-              setIsPassword(true)
+              setPassword(e.target.value);
+              setIsPassword(true);
             }}
             value={password}
-            className={`form-input ${!isPassword ? "error-input" : ""
-              }`} />
-          {!isPassword && (
-            <p className="error-text">please provide your password</p>
-          )}
+            className={`form-input ${!isPassword ? "error-input" : ""}`}
+          />
         </div>
+
+        {/* 🔥 Updated Sign-In Button with Loading State */}
         <Button
           type="submit"
-          className="bg-primary p-1 text-lg font-semibold rounded text-white w-full flex justify-center"
-          btnText="Sign In"
+          className={`bg-primary p-1 text-lg font-semibold rounded text-white w-full flex justify-center ${
+            loading ? "opacity-50 cursor-not-allowed" : ""
+          }`}
+          disabled={loading}
+          btnText={loading ? "Loading..." : "Sign In"} // Show loading text
         />
       </form>
       <div>
         <span>Don't have an account?</span>{" "}
-        <Button type="button" className="text-primary font-semibold text-xl" onClick={() => navigate("/")} btnText="Sign Up" />
-
+        <Button
+          type="button"
+          className="text-primary font-semibold text-xl"
+          onClick={() => navigate("/")}
+          btnText="Sign Up"
+        />
       </div>
     </div>
   );
