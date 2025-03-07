@@ -1,10 +1,10 @@
 import React, { useContext, useMemo, useState, useCallback, useEffect } from "react";
-import blankImg from "../../assets/Images/BlankImg.png";
 import { TikMarkIconSvg } from "../Svgs";
 import { ChatUserProps } from "../../interfaces/chatUser.interface";
 import useDatabase from "../../hooks/useDatabase";
 import { RecipientContext, SenderContext } from "../../contexts/ChatContext";
 import { Message } from "../../interfaces/message.interface";
+import BlankImg from "../../../public/Images/BlankImg.png"
 
 interface ChatItemProps {
   searchValue: string;
@@ -103,7 +103,7 @@ export const ChatItem: React.FC<ChatItemProps> = React.memo(({ searchValue }) =>
             <div className="flex gap-2 w-[95%]">
               <div
                 className="max-w-[45px] max-h-[45px] min-w-[45px] min-h-[45px] rounded-full bg-cover bg-center"
-                style={{ backgroundImage: `url(${user.profilePicUrl || blankImg})` }}
+                style={{ backgroundImage: `url(${user.profilePicUrl || BlankImg })` }}
               ></div>
 
               <div className="w-[100%]">

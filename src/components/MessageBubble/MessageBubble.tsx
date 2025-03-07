@@ -1,5 +1,5 @@
 import React, { useContext, useState } from "react";
-import BlankImg from "../../assets/Images/blankImg.png";
+import BlankImg from "../../../public/Images/BlankImg.png"
 import { MessageBubbleProps } from "./messageBubble.interface";
 import { SenderContext, RecipientContext } from "../../contexts/ChatContext";
 import { DocsThumbnailSvg, PdfThumbnailSvg, PowerPointThumbnailSvg, XcelThumbnailSvg } from "../Svgs";

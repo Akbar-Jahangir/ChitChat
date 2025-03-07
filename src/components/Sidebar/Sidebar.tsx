@@ -16,7 +16,7 @@ import {
 } from "../Svgs";
 import { SenderContext, RecipientContext } from "../../contexts/ChatContext";
 import { SidebarProps } from "./sidebar.interface";
-import BlankImg from "../../assets/Images/blankImg.png";
+import BlankImg from "../../../public/Images/BlankImg.png"
 import useDatabase from "../../hooks/useDatabase";
 import { MediaDisplay } from "../MediaDisplay/MediaDisplay";
 import { Message } from "../../interfaces/message.interface";
