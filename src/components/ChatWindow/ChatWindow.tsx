@@ -34,6 +34,8 @@ export const ChatWindow: React.FC = () => {
     const [groupedMessages, setGroupedMessages] = useState<MessageGroup[]>([]);
     const [localFileUrl, setLocalFileUrl] = useState<string>("");
     const [uploadedFileUrl, setUploadedFileUrl] = useState<string>("");
+    const [fileName,setFileName]=useState<string>("")
+    const [fileType,setFileType]=useState<string>("")
 
     const { saveMessage, getChatHistory } = useDatabase();
 
@@ -51,8 +53,8 @@ export const ChatWindow: React.FC = () => {
     };
 
     const messageTypeBtnData = [
-        { id: 1, icon: <AttachmentIconSvg />, accept: "image/*,video/*,.mp3,.pdf,.docx,.xlsx" },
-        { id: 2, icon: <CameraIconSvg />, accept: "image/*" },
+        { id: 1, icon: <AttachmentIconSvg />,accept: "image/*,video/*,.mp3,.pdf,.docx,.xlsx,.ppt,.pptx,.ppsx" },
+        { id: 2, icon: <CameraIconSvg />, accept: "image/*,video/*" },
     ];
 
     // Format date for message grouping
@@ -176,6 +178,8 @@ export const ChatWindow: React.FC = () => {
             messageContent: outgoingMessage.trim(),
             timestamp: Date.now(),
             fileUrl: uploadedFileUrl,
+            fileName:fileName,
+            fileType:fileType
         };
 
         const sent = await sendMessageToServer(messageData);
@@ -203,26 +207,22 @@ export const ChatWindow: React.FC = () => {
         }
     };
 
-    const convertFileToBase64 = (file: File): Promise<string> => {
-        return new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.readAsDataURL(file); // Convert to Base64
-            reader.onload = () => resolve(reader.result as string);
-            reader.onerror = (error) => reject(error);
-        });
-    };
-
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
-
+    
         if (!file) return;
-        const url = await convertFileToBase64(file);
-
+    
+        const url = URL.createObjectURL(file);
         setLocalFileUrl(url);
+        setFileName(file.name)
+        setFileType(file.type)
+    
         const fileUrl = await uploadFile(file);
         setUploadedFileUrl(fileUrl);
+    
         e.target.value = "";
     };
+    
 
     const getChannelName = (userId1: string, userId2: string) => {
         const sortedIds = [userId1, userId2].sort();
@@ -232,7 +232,6 @@ export const ChatWindow: React.FC = () => {
     useEffect(() => {
         const fetchMessages = async () => {
             const allMessages = await getChatHistory(senderId, recipientId);
-            console.log("All messages from database:", allMessages);
             const filteredMessages = allMessages.filter(
                 (msg) =>
                     (msg.senderId === senderId && msg.recipientId === recipientId) ||
@@ -294,10 +293,11 @@ export const ChatWindow: React.FC = () => {
                                     senderId={msg.senderId}
                                     messageContent={msg.messageContent}
                                     fileUrl={msg.fileUrl}
+                                    fileName={msg.fileName}
                                 />
                             ))}
 
-                            {/* Only render the date header if the date is not empty */}
+                        
                             {group.date && (
                                 <div className="flex justify-center my-4 items-center">
                                     <span className="bg-slate w-full h-[1px]"></span>
@@ -313,7 +313,7 @@ export const ChatWindow: React.FC = () => {
                 </div>
                 {localFileUrl && (
                     <div className="mb-16 bg-lavenderBlue w-full flex justify-center pt-2">
-                        <FilePreview fileUrl={localFileUrl} />
+                        <FilePreview fileUrl={localFileUrl} fileName={fileName} />
                     </div>
                 )}
 
@@ -327,8 +327,8 @@ export const ChatWindow: React.FC = () => {
                                 onChange={(e) => setOutgoingMessage(e.target.value)}
                                 onKeyDown={(e) => {
                                     if (e.key === "Enter" && !e.shiftKey) {
-                                        e.preventDefault(); // Prevents adding a new line
-                                        handleSubmit(e); // Calls the message sending function
+                                        e.preventDefault()
+                                        handleSubmit(e); 
                                     }
                                 }}
                                 className="w-[90%] px-2 mb-2"

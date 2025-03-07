@@ -18,11 +18,18 @@ import { SenderContext, RecipientContext } from "../../contexts/ChatContext";
 import { SidebarProps } from "./sidebar.interface";
 import BlankImg from "../../assets/Images/blankImg.png";
 import useDatabase from "../../hooks/useDatabase";
+import { MediaDisplay } from "../MediaDisplay/MediaDisplay";
 import { Message } from "../../interfaces/message.interface";
 
-export const Sidebar: React.FC<SidebarProps> = ({ alignment=null }) => {
+
+
+
+
+
+export const Sidebar: React.FC<SidebarProps> = ({ alignment = null }) => {
   const [searchValue, setSearchValue] = useState("");
-  const [storedMessages, setStoredMessages] = useState<Message[]>([]);
+  const [mediaItems, setMediaItems] = useState<Message[]>([]);
+  const [selectedMediaType, setSelectedMediaType] = useState<string | null>(null);
 
   const { sendername, senderId, senderPicUrl } = useContext(SenderContext);
   const { recipientId, recipientname, recipientPicUrl } = useContext(RecipientContext);
@@ -33,7 +40,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ alignment=null }) => {
     profilePicUrl: senderPicUrl,
     username: sendername,
   };
-console.log(storedMessages)
+
   const mediaBtnsData = [
     { id: 20, btnText: "PDF", icon: <PdfIconSvg /> },
     { id: 30, btnText: "VIDEO", icon: <VideoIconSvg /> },
@@ -50,16 +57,47 @@ console.log(storedMessages)
           (msg.senderId === recipientId && msg.recipientId === senderId)
       );
       filteredMessages.sort((a, b) => a.timestamp - b.timestamp);
-      setStoredMessages(filteredMessages);
+
+
+
+      const extractedMediaItems: Message[] = [];
+      filteredMessages.forEach(msg => {
+        if (msg && Array.isArray(msg)) {
+          msg.forEach(attachment => {
+            if (attachment.fileUrl && attachment.fileName) {
+              extractedMediaItems.push({
+                messageId: `${msg.messageId}-${attachment.fileName}`,
+                fileUrl: attachment.fileUrl,
+                fileName: attachment.fileName,
+                fileType: attachment.fileType,
+                timestamp: msg.timestamp,
+                senderId: msg.senderId,
+                recipientId: msg.recipientId
+              });
+            }
+          });
+        }
+      });
+
+      setMediaItems(extractedMediaItems);
     };
+
     fetchMessages();
   }, [recipientId, senderId, getChatHistory]);
 
+  const handleMediaButtonClick = (mediaType: string) => {
+    setSelectedMediaType(mediaType);
+  };
+
+  const handleViewAllClick = () => {
+    setSelectedMediaType("ALL");
+  };
+
   return (
-    <div className="w-full  lg:w-1/4 xl:w-[25%] flex flex-col items-center bg-smokeWhite space-y-3.5 h-screen p-4 overflow-hidden z-50">
+    <div className="w-full lg:w-1/4 xl:w-[25%] flex flex-col items-center bg-smokeWhite space-y-3.5 h-screen p-4 overflow-hidden z-50">
       {alignment === "left" ? (
         <>
-          <div className="w-full flex flex-col items-center space-y-3.5 pt-4">
+          <div className="w-full flex flex-col items-center space-y-3.5">
             <Header userInfo={userInfo} actionIcons={[{ id: "1", icon: <EditIconSvg /> }]} />
             <Searchbar searchValue={searchValue} setSearchValue={setSearchValue} />
             <span className="h-[1px] w-full bg-lightGray"></span>
@@ -97,14 +135,30 @@ console.log(storedMessages)
             <p className="w-full font-semibold">Attachments</p>
             <div className="flex flex-wrap justify-center w-full gap-3">
               {mediaBtnsData.map((data) => (
-                <Button key={data.id} type="button" className="media-btn" icon={data.icon} btnText={data.btnText} />
+                <Button
+                  key={data.id}
+                  type="button"
+                  className={`media-btn ${selectedMediaType === data.btnText ? 'bg-primary text-white' : ''}`}
+                  icon={data.icon}
+                  btnText={data.btnText}
+                  onClick={() => handleMediaButtonClick(data.btnText)}
+                />
               ))}
             </div>
             <Button
               type="button"
               btnText="View All"
-              className="text-xs font-semibold border border-primary rounded-full w-24 h-7 text-primary p-1"
+              className={`text-xs font-semibold border border-primary rounded-full w-24 h-7 p-1 ${selectedMediaType === "ALL" ? 'bg-primary text-white' : 'text-primary'
+                }`}
+              onClick={handleViewAllClick}
             />
+
+            {/* Media Display Section */}
+            {selectedMediaType && (
+              <div className="w-full mt-4">
+                <MediaDisplay mediaType={selectedMediaType} mediaItems={mediaItems} />
+              </div>
+            )}
           </div>
         </div>
       )}

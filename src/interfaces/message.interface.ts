@@ -5,4 +5,6 @@ export interface Message {
   recipientId: string;
   timestamp: number;
   fileUrl?: string;
+  fileName?:string
+  fileType?: string; // Add this line to store the file type
 }
