@@ -33,5 +33,5 @@ app.post("/send-message", async (req, res) => {
   res.status(200).json({ message: "Message sent successfully!" });
 });
 app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+  console.log(`Server running on https://chit-chat.koyeb.app`);
 });

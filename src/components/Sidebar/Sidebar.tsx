@@ -22,10 +22,6 @@ import { MediaDisplay } from "../MediaDisplay/MediaDisplay";
 import { Message } from "../../interfaces/message.interface";
 
 
-
-
-
-
 export const Sidebar: React.FC<SidebarProps> = ({ alignment = null }) => {
   const [searchValue, setSearchValue] = useState("");
   const [mediaItems, setMediaItems] = useState<Message[]>([]);
