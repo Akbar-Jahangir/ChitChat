@@ -108,7 +108,7 @@ export const ChatItem: React.FC<ChatItemProps> = React.memo(({ searchValue }) =>
 
               <div className="w-[100%]">
                 <div className="flex justify-between w-full">
-                  <p className="text-sm font-semibold text-primary  max-w-[40%]  text-ellipsis overflow-hidden">{user.username}</p>
+                  <p className="text-sm font-semibold text-primary  max-w-[45%]  truncate overflow-hidden">{user.username}</p>
                   {lastMessage && <p className="text-lightSlate text-xs self-center">{formatTimestamp(lastMessage.timestamp)}</p>}
                 </div>
 
