@@ -34,8 +34,8 @@ export const ChatWindow: React.FC = () => {
     const [groupedMessages, setGroupedMessages] = useState<MessageGroup[]>([]);
     const [localFileUrl, setLocalFileUrl] = useState<string>("");
     const [uploadedFileUrl, setUploadedFileUrl] = useState<string>("");
-    const [fileName,setFileName]=useState<string>("")
-    const [fileType,setFileType]=useState<string>("")
+    const [fileName, setFileName] = useState<string>("");
+    const [fileType, setFileType] = useState<string>("");
 
     const { saveMessage, getChatHistory } = useDatabase();
 
@@ -53,7 +53,7 @@ export const ChatWindow: React.FC = () => {
     };
 
     const messageTypeBtnData = [
-        { id: 1, icon: <AttachmentIconSvg />,accept: "image/*,video/*,.mp3,.pdf,.docx,.xlsx,.ppt,.pptx,.ppsx" },
+        { id: 1, icon: <AttachmentIconSvg />, accept: "image/*,video/*,.mp3,.pdf,.docx,.xlsx,.ppt,.pptx,.ppsx" },
         { id: 2, icon: <CameraIconSvg />, accept: "image/*,video/*" },
     ];
 
@@ -77,7 +77,7 @@ export const ChatWindow: React.FC = () => {
         ).getTime();
 
         if (messageDay.getTime() === todayDay.getTime()) {
-            return { display: "", timestamp: midnightTimestamp }; // Return empty string for today
+            return { display: "", timestamp: midnightTimestamp }; // Empty string for today - no header will show
         } else if (messageDay.getTime() === yesterdayDay.getTime()) {
             return { display: "Yesterday", timestamp: midnightTimestamp };
         } else {
@@ -99,12 +99,12 @@ export const ChatWindow: React.FC = () => {
 
         messages.forEach(message => {
             const { display, timestamp } = formatMessageDate(message.timestamp);
+            // Use display as the key - empty string for today
             if (!groups[display]) {
                 groups[display] = { messages: [], timestamp };
             }
             groups[display].messages.push(message);
         });
-
 
         return Object.entries(groups)
             .map(([date, { messages, timestamp }]) => ({
@@ -178,23 +178,23 @@ export const ChatWindow: React.FC = () => {
             messageContent: outgoingMessage.trim(),
             timestamp: Date.now(),
             fileUrl: uploadedFileUrl,
-            fileName:fileName,
-            fileType:fileType
+            fileName: fileName,
+            fileType: fileType
         };
 
         const sent = await sendMessageToServer(messageData);
         if (sent) {
-            setStoredMessages((prevMessages) => {
-                const newMessages = [...prevMessages, messageData].sort((a, b) => a.timestamp - b.timestamp);
-                return newMessages;
-            });
+            // Don't update storedMessages here, let the Pusher event handle it
+            // This prevents duplicate messages
             saveMessage(messageData);
 
             setOutgoingMessage("");
             setUploadedFileUrl("");
             setLocalFileUrl("");
+            setFileName("");
+            setFileType("");
         }
-    }, [outgoingMessage, uploadedFileUrl, recipientId, senderId, saveMessage]);
+    }, [outgoingMessage, uploadedFileUrl, recipientId, senderId, saveMessage, fileName, fileType]);
 
     const uploadFile = async (file: File): Promise<string> => {
         try {
@@ -214,15 +214,22 @@ export const ChatWindow: React.FC = () => {
     
         const url = URL.createObjectURL(file);
         setLocalFileUrl(url);
-        setFileName(file.name)
-        setFileType(file.type)
+        setFileName(file.name);
+        setFileType(file.type);
     
-        const fileUrl = await uploadFile(file);
-        setUploadedFileUrl(fileUrl);
+        try {
+            const fileUrl = await uploadFile(file);
+            setUploadedFileUrl(fileUrl);
+        } catch (error) {
+            console.error("Error uploading file:", error);
+            alert("Failed to upload file. Please try again.");
+            setLocalFileUrl("");
+            setFileName("");
+            setFileType("");
+        }
     
         e.target.value = "";
     };
-    
 
     const getChannelName = (userId1: string, userId2: string) => {
         const sortedIds = [userId1, userId2].sort();
@@ -250,28 +257,32 @@ export const ChatWindow: React.FC = () => {
 
         channel.bind("new-message", (data: Message) => {
             setStoredMessages((prevMessages) => {
+                // Check if the message already exists to avoid duplicates
                 if (prevMessages.some((msg) => msg.messageId === data.messageId)) {
                     return prevMessages;
                 }
 
+                // Add the new message and sort
                 return [...prevMessages, data].sort((a, b) => a.timestamp - b.timestamp);
             });
         });
-        console.log("hellllo");
-        
 
         return () => {
             channel.unbind_all();
             channel.unsubscribe();
         };
-    }, [recipientId]);
+    }, [recipientId, senderId, getChatHistory]);
 
     useEffect(() => {
         setGroupedMessages(groupMessagesByDate(storedMessages));
     }, [storedMessages, groupMessagesByDate]);
 
     useEffect(() => {
-        setLocalFileUrl("")
+        // Reset file-related states when changing recipient
+        setLocalFileUrl("");
+        setUploadedFileUrl("");
+        setFileName("");
+        setFileType("");
     }, [recipientId]);
 
     return (
@@ -286,32 +297,33 @@ export const ChatWindow: React.FC = () => {
                     <div className="h-[1px] w-full bg-lightGray"></div>
                 </div>
                 <div className="w-[100%] flex justify-center overflow-y-scroll custom-scrollbar">
-                <div className="w-[95%] flex flex-col items-center h-[80vh] ">
-                    {groupedMessages.map((group) => (
-                        <div key={group.date} className="w-full">
-                            {group.messages.map((msg) => (
-                                <ChatMessage
-                                    key={msg.messageId}
-                                    senderId={msg.senderId}
-                                    messageContent={msg.messageContent}
-                                    fileUrl={msg.fileUrl}
-                                    fileName={msg.fileName}
-                                />
-                            ))}
-
-                        
-                            {group.date && (
-                                <div className="flex justify-center my-4 items-center">
-                                    <span className="bg-slate w-full h-[1px]"></span>
-                                    <span className="bg-gray-100 rounded-full px-1 py-1 text-sm text-slate">
-                                        {group.date}
-                                    </span>
-                                    <span className="bg-slate w-full h-[1px]"></span>
-                                </div>
-                            )}
-                        </div>
-                    ))}
-                </div>
+                    <div className="w-[95%] flex flex-col items-center h-[80vh]">
+                        {groupedMessages.map((group) => (
+                            <div key={group.timestamp} className="w-full">
+                                {/* Only show date header if it's not empty (not Today) */}
+                                {group.date && (
+                                    <div className="flex justify-center my-4 items-center">
+                                        <span className="bg-slate w-full h-[1px]"></span>
+                                        <span className="bg-gray-100 rounded-full px-3 py-1 text-sm text-slate mx-2">
+                                            {group.date}
+                                        </span>
+                                        <span className="bg-slate w-full h-[1px]"></span>
+                                    </div>
+                                )}
+                                
+                                {/* Messages in this group */}
+                                {group.messages.map((msg) => (
+                                    <ChatMessage
+                                        key={msg.messageId}
+                                        senderId={msg.senderId}
+                                        messageContent={msg.messageContent}
+                                        fileUrl={msg.fileUrl}
+                                        fileName={msg.fileName}
+                                    />
+                                ))}
+                            </div>
+                        ))}
+                    </div>
                 </div>
                 {localFileUrl && (
                     <div className="mb-16 bg-lavenderBlue w-full flex justify-center pt-2">
@@ -329,7 +341,7 @@ export const ChatWindow: React.FC = () => {
                                 onChange={(e) => setOutgoingMessage(e.target.value)}
                                 onKeyDown={(e) => {
                                     if (e.key === "Enter" && !e.shiftKey) {
-                                        e.preventDefault()
+                                        e.preventDefault();
                                         handleSubmit(e); 
                                     }
                                 }}

@@ -123,7 +123,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ alignment = null }) => {
             </div>
 
             <div className="flex justify-between w-[100%]">
-              <Button type="button" btnText="View Friends" icon={<ProfileIconSvg />} className="flex text-xs " />
+              <Button type="button" btnText="View Friends" icon={<ProfileIconSvg />} className="flex text-xs gap-2" />
 
               <Button type="button" btnText="Add to Favorites" icon={<FavoriteIconSvg color="black" width="14px" height="14px" />} className="flex text-xs gap-2" />
 
