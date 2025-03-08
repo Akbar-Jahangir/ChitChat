@@ -1,7 +1,7 @@
 import React from "react";
 import { HeaderProps } from "./header.interface";
 import { Button } from "../Button";
-import BlankImg from "/Images/BlankImg.png"
+import BlankImg from "../../assets/Images/BlankImg.png"
 import { OnlineIconSvg } from "../Svgs";
 
 export const Header: React.FC<HeaderProps> = ({

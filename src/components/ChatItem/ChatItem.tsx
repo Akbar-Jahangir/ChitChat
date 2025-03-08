@@ -4,7 +4,7 @@ import { ChatUserProps } from "../../interfaces/chatUser.interface";
 import useDatabase from "../../hooks/useDatabase";
 import { RecipientContext, SenderContext } from "../../contexts/ChatContext";
 import { Message } from "../../interfaces/message.interface";
-import BlankImg from "/Images/BlankImg.png"
+import BlankImg from "../../assets/Images/BlankImg.png"
 
 interface ChatItemProps {
   searchValue: string;

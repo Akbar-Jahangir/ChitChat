@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Input } from "../components/Input";
 import { Button } from "../components/Button";
 import { useNavigate } from "react-router-dom";
-import BlankImg from "/Images/BlankImg.png"
+import BlankImg from "..//assets/Images/BlankImg.png"
 import useDatabase from "../hooks/useDatabase";
 import { storage } from "../utils/firebaseConfig";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
