@@ -117,7 +117,7 @@ export const ChatWindow: React.FC = () => {
 
     const checkServerStatus = async () => {
         try {
-            const response = await fetch("http://localhost:5000/health-check", {
+            const response = await fetch("http://localhost:8000/health-check", {
                 method: "GET",
                 headers: { "Cache-Control": "no-cache" }, // Ensures fresh request
             });
@@ -143,7 +143,7 @@ export const ChatWindow: React.FC = () => {
         }
 
         try {
-            const response = await fetch("http://localhost:5000/send-message", {
+            const response = await fetch("http://localhost:8000/send-message", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
