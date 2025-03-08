@@ -117,7 +117,7 @@ export const ChatWindow: React.FC = () => {
 
     const checkServerStatus = async () => {
         try {
-            const response = await fetch("https://chit-chat.koyeb.app/health-check", {
+            const response = await fetch(`https://chit-chat.koyeb.app/health-check`, {
                 method: "GET",
                 headers: { "Cache-Control": "no-cache" }, // Ensures fresh request
             });
