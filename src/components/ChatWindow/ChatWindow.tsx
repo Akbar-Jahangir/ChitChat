@@ -245,7 +245,7 @@ export const ChatWindow: React.FC = () => {
         fetchMessages();
 
         const channelName = getChannelName(senderId, recipientId);
-        const pusher = new Pusher("da72da3e339224a3b27a", { cluster: "ap2" });
+        const pusher = new Pusher("99e684b5b5229e50ef5f", { cluster: "ap2" });
         const channel = pusher.subscribe(channelName);
 
         channel.bind("new-message", (data: Message) => {

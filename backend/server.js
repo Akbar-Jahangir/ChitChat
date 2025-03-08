@@ -25,16 +25,25 @@ app.get("/health-check", (req, res) => {
   res.status(200).json({ status: "ok" });
 });
 app.get("/", (req, res) => {
-  res.send("Server is running!");
+    res.send("Server is running!");
 });
 app.post("/send-message", async (req, res) => {
-  const { messageData, channel } = req.body;
- 
-  pusher.trigger(channel, "new-message", messageData)
-    .then(() => console.log("Pusher event triggered successfully"))
-    .catch((error) => console.error("Pusher Error:", error));
+  console.log("Received message data:", req.body);
 
-  res.status(200).json({ message: "Message sent successfully!" });
+  const { messageData, channel } = req.body;
+
+  if (!messageData || !channel) {
+    return res.status(400).json({ error: "Invalid data received" });
+  }
+
+  try {
+    await pusher.trigger(channel, "new-message", messageData);
+    console.log("Pusher event triggered successfully");
+    res.status(200).json({ message: "Message sent successfully!" });
+  } catch (error) {
+    console.error("Pusher Error:", error);
+    res.status(500).json({ error: "Failed to send message." });
+  }
 });
 app.listen(PORT, () => {
   console.log(`Server running on https://chit-chat.koyeb.app`);
