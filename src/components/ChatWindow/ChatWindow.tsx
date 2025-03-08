@@ -245,7 +245,7 @@ export const ChatWindow: React.FC = () => {
         fetchMessages();
 
         const channelName = getChannelName(senderId, recipientId);
-        const pusher = new Pusher("99e684b5b5229e50ef5f", { cluster: "ap2" });
+        const pusher = new Pusher("33466c91963fd345d327", { cluster: "ap2" });
         const channel = pusher.subscribe(channelName);
 
         channel.bind("new-message", (data: Message) => {
@@ -257,12 +257,14 @@ export const ChatWindow: React.FC = () => {
                 return [...prevMessages, data].sort((a, b) => a.timestamp - b.timestamp);
             });
         });
+        console.log("hellllo");
+        
 
         return () => {
             channel.unbind_all();
             channel.unsubscribe();
         };
-    }, [recipientId, senderId, getChatHistory]);
+    }, [recipientId]);
 
     useEffect(() => {
         setGroupedMessages(groupMessagesByDate(storedMessages));

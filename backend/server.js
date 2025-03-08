@@ -24,9 +24,9 @@ const pusher = new Pusher({
 app.get("/health-check", (req, res) => {
   res.status(200).json({ status: "ok" });
 });
-app.get("/", (req, res) => {
-    res.send("Server is running!");
-});
+// app.get("/", (req, res) => {
+//     res.send("Server is running!");
+// });
 app.post("/send-message", async (req, res) => {
   console.log("Received message data:", req.body);
 
