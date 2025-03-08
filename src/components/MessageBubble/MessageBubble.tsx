@@ -63,7 +63,7 @@ export const ChatMessage: React.FC<MessageBubbleProps> = React.memo(({ messageCo
                                             src={fileUrl}
                                             alt="Uploaded"
                                             className="rounded-lg max-w-[200px]"
-
+                                            onClick={() => setSelectedImage(fileUrl)}
                                         />
                                     ) : isVideo(fileName!) ? (
                                         <video controls className="rounded-lg max-w-[300px]">
@@ -218,7 +218,7 @@ export const ChatMessage: React.FC<MessageBubbleProps> = React.memo(({ messageCo
             {selectedImage && (
                 <div
                     className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50"
-                    onClick={() => setSelectedImage(null)} // Close modal when clicking outside
+                    onClick={() => setSelectedImage(null)}
                 >
                     <div className="relative max-w-3xl w-full flex justify-center">
                         <img
@@ -228,7 +228,7 @@ export const ChatMessage: React.FC<MessageBubbleProps> = React.memo(({ messageCo
                         />
                         <button
                             className="absolute top-4 right-4 bg-white text-black px-3 py-1 rounded-full text-lg font-bold"
-                            onClick={() => setSelectedImage(null)} // Close modal
+                            onClick={() => setSelectedImage(null)} 
                         >
                             ✕
                         </button>
