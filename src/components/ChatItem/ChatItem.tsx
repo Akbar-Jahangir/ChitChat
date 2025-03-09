@@ -100,16 +100,18 @@ export const ChatItem: React.FC<ChatItemProps> = React.memo(({ searchValue }) =>
             key={user.userId}
             onClick={() => handleClick(user.userId, user.username, user.profilePicUrl)}
           >
-            <div className="flex gap-2 w-[95%]">
+            <div className="flex w-[95%] justify-between">
+              <div className="w-[17%]">
               <div
                 className="max-w-[45px] max-h-[45px] min-w-[45px] min-h-[45px] rounded-full bg-cover bg-center"
                 style={{ backgroundImage: `url(${user.profilePicUrl || BlankImg })` }}
               ></div>
+              </div>
 
-              <div className="w-[100%]">
+              <div className="w-[77%]">
                 <div className="flex justify-between w-full">
-                  <p className="text-sm font-semibold text-primary  max-w-[45%]  truncate overflow-hidden">{user.username}</p>
-                  {lastMessage && <p className="text-lightSlate text-xs self-center">{formatTimestamp(lastMessage.timestamp)}</p>}
+                  <p className="text-sm font-semibold text-primary w-[55%] truncate">{user.username}</p>
+                  {lastMessage && <p className="text-lightSlate text-xs self-center w-[30%] text-end">{formatTimestamp(lastMessage.timestamp)}</p>}
                 </div>
 
                 <div className="flex justify-between w-full">

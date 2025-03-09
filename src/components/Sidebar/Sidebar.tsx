@@ -26,6 +26,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ alignment = null }) => {
   const [searchValue, setSearchValue] = useState("");
   const [mediaItems, setMediaItems] = useState<Message[]>([]);
   const [selectedMediaType, setSelectedMediaType] = useState<string | null>(null);
+  const [filteredMediaItems, setFilteredMediaItems] = useState<Message[]>([]);
 
   const { sendername, senderId, senderPicUrl } = useContext(SenderContext);
   const { recipientId, recipientname, recipientPicUrl } = useContext(RecipientContext);
@@ -46,40 +47,96 @@ export const Sidebar: React.FC<SidebarProps> = ({ alignment = null }) => {
 
   useEffect(() => {
     const fetchMessages = async () => {
-      const allMessages = await getChatHistory(senderId, recipientId);
-      const filteredMessages = allMessages.filter(
-        (msg) =>
-          (msg.senderId === senderId && msg.recipientId === recipientId) ||
-          (msg.senderId === recipientId && msg.recipientId === senderId)
-      );
-      filteredMessages.sort((a, b) => a.timestamp - b.timestamp);
+      try {
+        const allMessages = await getChatHistory(senderId, recipientId);
+        console.log("All messages:", allMessages); // Debug log
+        
+        const filteredMessages = allMessages.filter(
+          (msg) =>
+            (msg.senderId === senderId && msg.recipientId === recipientId) ||
+            (msg.senderId === recipientId && msg.recipientId === senderId)
+        );
+        filteredMessages.sort((a, b) => a.timestamp - b.timestamp);
+        
+        console.log("Filtered messages:", filteredMessages); // Debug log
 
-
-
-      const extractedMediaItems: Message[] = [];
-      filteredMessages.forEach(msg => {
-        if (msg && Array.isArray(msg)) {
-          msg.forEach(attachment => {
-            if (attachment.fileUrl && attachment.fileName) {
+        // Extract media items from messages
+        const extractedMediaItems: Message[] = [];
+        
+        filteredMessages.forEach(msg => {
+          // Check if the message has fileUrl property
+          if (msg && msg.fileUrl) {
+            // If fileUrl is an array, process each item
+            if (Array.isArray(msg.fileUrl)) {
+              msg.fileUrl.forEach(fileItem => {
+                if ((typeof fileItem === 'object') && fileItem.fileUrl && fileItem.fileName) {
+                  extractedMediaItems.push({
+                    messageId: `${msg.messageId}-${fileItem.fileName}`,
+                    fileUrl: fileItem.fileUrl,
+                    fileName: fileItem.fileName,
+                    fileType: fileItem.fileType || getFileTypeFromName(fileItem.fileName),
+                    timestamp: msg.timestamp,
+                    senderId: msg.senderId,
+                    recipientId: msg.recipientId
+                  });
+                }
+              });
+            } 
+            // If fileUrl is a string and fileName exists, it's a single file
+            else if (typeof msg.fileUrl === 'string' && msg.fileName) {
               extractedMediaItems.push({
-                messageId: `${msg.messageId}-${attachment.fileName}`,
-                fileUrl: attachment.fileUrl,
-                fileName: attachment.fileName,
-                fileType: attachment.fileType,
+                messageId: msg.messageId,
+                fileUrl: msg.fileUrl,
+                fileName: msg.fileName,
+                fileType: msg.fileType || getFileTypeFromName(msg.fileName),
                 timestamp: msg.timestamp,
                 senderId: msg.senderId,
                 recipientId: msg.recipientId
               });
             }
-          });
-        }
-      });
+          }
+        });
 
-      setMediaItems(extractedMediaItems);
+        console.log("Extracted media items:", extractedMediaItems); // Debug log
+        setMediaItems(extractedMediaItems);
+      } catch (error) {
+        console.error("Error fetching chat history:", error);
+      }
     };
 
-    fetchMessages();
+    if (recipientId) {
+      fetchMessages();
+    }
   }, [recipientId, senderId, getChatHistory]);
+
+  // Helper function to determine file type from file name if not explicitly provided
+  const getFileTypeFromName = (fileName: string): string => {
+    const extension = fileName.split('.').pop()?.toLowerCase() || '';
+    
+    if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(extension)) {
+      return 'IMAGE';
+    } else if (['mp4', 'webm', 'mov', 'avi'].includes(extension)) {
+      return 'VIDEO';
+    } else if (['mp3', 'wav', 'ogg', 'm4a'].includes(extension)) {
+      return 'MP3';
+    } else if (['pdf'].includes(extension)) {
+      return 'PDF';
+    }
+    
+    return 'OTHER';
+  };
+
+  useEffect(() => {
+    // Filter media items based on selected media type
+    if (selectedMediaType === "ALL") {
+      setFilteredMediaItems(mediaItems);
+    } else if (selectedMediaType) {
+      const filtered = mediaItems.filter(item => 
+        item.fileType === selectedMediaType
+      );
+      setFilteredMediaItems(filtered);
+    }
+  }, [selectedMediaType, mediaItems]);
 
   const handleMediaButtonClick = (mediaType: string) => {
     setSelectedMediaType(mediaType);
@@ -96,7 +153,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ alignment = null }) => {
           <div className="w-full flex flex-col items-center space-y-3.5">
             <Header userInfo={userInfo} actionIcons={[{ id: "1", icon: <EditIconSvg /> }]} />
             <Searchbar searchValue={searchValue} setSearchValue={setSearchValue} />
-            <span className="h-[1px] w-full bg-lightGray"></span>
+            <span className="h-[1px] w-[95%] bg-lightGray"></span>
           </div>
           <div className="custom-scrollbar w-full flex flex-col items-center space-y-3.5 overflow-y-auto">
             <ChatItem searchValue={searchValue} />
@@ -104,7 +161,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ alignment = null }) => {
         </>
       ) : (
         <div className="flex flex-col items-center space-y-4 md:space-y-6 h-screen w-full">
-          <div className="w-full flex justify-center mt-4 md:mt-6">
+          <div className="w-full mt-4 md:mt-6">
             <Searchbar />
           </div>
           <div className="flex flex-col items-center text-center">
@@ -124,10 +181,9 @@ export const Sidebar: React.FC<SidebarProps> = ({ alignment = null }) => {
 
             <div className="flex justify-between w-[100%]">
               <Button type="button" btnText="View Friends" icon={<ProfileIconSvg />} className="flex text-xs gap-2" />
-
               <Button type="button" btnText="Add to Favorites" icon={<FavoriteIconSvg color="black" width="14px" height="14px" />} className="flex text-xs gap-2" />
-
             </div>
+            
             <p className="w-full font-semibold">Attachments</p>
             <div className="flex flex-wrap justify-center w-full gap-3">
               {mediaBtnsData.map((data) => (
@@ -149,10 +205,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ alignment = null }) => {
               onClick={handleViewAllClick}
             />
 
-            {/* Media Display Section */}
+            {/* Media Display Section with No Media Message */}
             {selectedMediaType && (
               <div className="w-full mt-4">
-                <MediaDisplay mediaType={selectedMediaType} mediaItems={mediaItems} />
+                {filteredMediaItems.length > 0 ? (
+                  <MediaDisplay mediaType={selectedMediaType} mediaItems={filteredMediaItems} />
+                ) : (
+                  <div className="text-center py-4">
+                    <p className="text-gray-500">No {selectedMediaType === "ALL" ? "media" : selectedMediaType.toLowerCase()} found</p>
+                  </div>
+                )}
               </div>
             )}
           </div>

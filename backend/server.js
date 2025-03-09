@@ -9,11 +9,11 @@ const app = express();
 const PORT = process.env.PORT || 8000;
 
 // Configure CORS
-app.use(cors({ 
+app.use(cors({
   origin: process.env.CLIENT_URL || "https://chit-chat-pink.vercel.app"
 }));
 
-// Add body parser middleware - THIS WAS MISSING
+// Add body parser middleware
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -53,6 +53,60 @@ app.post("/send-message", async (req, res) => {
   } catch (error) {
     console.error("Pusher Error:", error);
     res.status(500).json({ error: "Failed to send message." });
+  }
+});
+
+// Pusher authentication endpoint for presence channels
+app.post("/pusher/auth", (req, res) => {
+  const socketId = req.body.socket_id;
+  const channel = req.body.channel_name;
+  const userId = req.body.user_id;
+
+  console.log("Auth request for:", { socketId, channel, userId });
+
+  // Authenticate presence channels
+  if (channel.startsWith('presence-')) {
+    const presenceData = {
+      user_id: userId,
+      user_info: {
+        name: userId
+      }
+    };
+
+    try {
+      const auth = pusher.authorizeChannel(socketId, channel, presenceData);
+      console.log("Auth successful for presence channel");
+      res.send(auth);
+    } catch (error) {
+      console.error("Presence auth error:", error);
+      res.status(500).json({ error: "Failed to authenticate" });
+    }
+  } else {
+    // For non-presence channels
+    console.log("Auth not required for regular channel");
+    res.status(200).json({ success: true });
+  }
+});
+
+// User status update endpoint
+app.post("/user-status", async (req, res) => {
+  const { userId, status } = req.body;
+  
+  if (!userId) {
+    return res.status(400).json({ error: "User ID is required" });
+  }
+
+  try {
+    // Trigger an event to all clients about user status change
+    await pusher.trigger("user-status", "status-change", {
+      userId,
+      status: status || "online"
+    });
+    
+    res.status(200).json({ success: true });
+  } catch (error) {
+    console.error("Status update error:", error);
+    res.status(500).json({ error: "Failed to update status" });
   }
 });
 

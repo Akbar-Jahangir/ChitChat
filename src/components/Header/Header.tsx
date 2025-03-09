@@ -1,38 +1,43 @@
 import React from "react";
 import { HeaderProps } from "./header.interface";
 import { Button } from "../Button";
-import BlankImg from "../../assets/Images/BlankImg.png"
+import BlankImg from "../../assets/Images/BlankImg.png";
 import { OnlineIconSvg } from "../Svgs";
 
-export const Header: React.FC<HeaderProps> = ({
-  userInfo,
-  actionIcons,
-  onlineStatus = false,
-}) => {
-
+export const Header: React.FC<HeaderProps> = ({ userInfo, actionIcons }) => {
   return (
-    <header className="flex items-center justify-between w-[95%] pb-[7px] pt-[14px]" id={userInfo.userId}>
-      <div className="flex justify-between">
-        <div className="flex items-center gap-2">
-          <div
-            className="max-w-[45px] max-h-[45px] min-w-[45px] min-h-[45px] rounded-full bg-cover bg-center"
-            style={{ backgroundImage: `url(${userInfo.profilePicUrl || BlankImg})` }}
-          ></div>
-
-          <p className="text-sm font-semibold text-primary max-w-[70%] overflow-hidden text-ellipsis whitespace-nowrap">
-            {userInfo.username}
-          </p>
-
-          {onlineStatus && <OnlineIconSvg />}
+    <div className="w-full flex items-center justify-between py-2">
+      <div className="flex items-center">
+        <div className="relative">
+          <img
+            src={userInfo.profilePicUrl || BlankImg}
+            alt={userInfo.username}
+            className="w-12 h-12 rounded-full object-cover"
+          />
+          
+          {/* Online status indicator */}
+          {userInfo.isOnline !== undefined && (
+            <div className="absolute -bottom-1 -right-1">
+              <OnlineIconSvg />
+            </div>
+          )}
+        </div>
+        
+        <div className="ml-3">
+          <h3 className="font-medium text-darkPrimary">{userInfo.username}</h3>
+          {userInfo.isOnline !== undefined && (
+            <p className="text-xs text-slate">
+              {userInfo.isOnline ? "Online" : "Offline"}
+            </p>
+          )}
         </div>
       </div>
-      <div className="flex gap-2.5">
-        {actionIcons?.map((icon) => (
-          <Button type="button" icon={icon.icon} key={icon.id} className="hover:bg-slate p-1  flex justify-center items-center rounded" />
+      
+      <div className="flex items-center gap-x-4">
+        {actionIcons.map((icon) => (
+          <Button type="button" key={icon.id} icon={icon.icon} className="focus:outline-none" />
         ))}
-
       </div>
-    </header>
-
+    </div>
   );
 };

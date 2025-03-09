@@ -28,6 +28,11 @@ interface MessageGroup {
     timestamp: number; // Used for sorting
 }
 
+// Define Pusher keys and server URL
+const PUSHER_KEY = "33466c91963fd345d327";
+const PUSHER_CLUSTER = "ap2";
+const SERVER_URL = "https://chit-chat.koyeb.app";
+
 export const ChatWindow: React.FC = () => {
     const [outgoingMessage, setOutgoingMessage] = useState<string>("");
     const [storedMessages, setStoredMessages] = useState<Message[]>([]);
@@ -36,6 +41,7 @@ export const ChatWindow: React.FC = () => {
     const [uploadedFileUrl, setUploadedFileUrl] = useState<string>("");
     const [fileName, setFileName] = useState<string>("");
     const [fileType, setFileType] = useState<string>("");
+    const [isRecipientOnline, setIsRecipientOnline] = useState<boolean>(false);
 
     const { saveMessage, getChatHistory } = useDatabase();
 
@@ -50,6 +56,7 @@ export const ChatWindow: React.FC = () => {
         userId: recipientId,
         profilePicUrl: recipientPicUrl,
         username: recipientname,
+        isOnline: isRecipientOnline
     };
 
     const messageTypeBtnData = [
@@ -117,7 +124,7 @@ export const ChatWindow: React.FC = () => {
 
     const checkServerStatus = async () => {
         try {
-            const response = await fetch(`https://chit-chat.koyeb.app/health-check`, {
+            const response = await fetch(`${SERVER_URL}/health-check`, {
                 method: "GET",
                 headers: { "Cache-Control": "no-cache" }, // Ensures fresh request
             });
@@ -143,7 +150,7 @@ export const ChatWindow: React.FC = () => {
         }
 
         try {
-            const response = await fetch("https://chit-chat.koyeb.app/send-message", {
+            const response = await fetch(`${SERVER_URL}/send-message`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -236,6 +243,23 @@ export const ChatWindow: React.FC = () => {
         return `chat-${sortedIds[0]}-${sortedIds[1]}`;
     };
 
+    // Update user status on the server
+    const updateUserStatus = async (status: "online" | "offline") => {
+        try {
+            await fetch(`${SERVER_URL}/user-status`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    userId: senderId,
+                    status
+                }),
+            });
+        } catch (error) {
+            console.error("Error updating user status:", error);
+        }
+    };
+
+    // Handle messages from Pusher
     useEffect(() => {
         const fetchMessages = async () => {
             const allMessages = await getChatHistory(senderId, recipientId);
@@ -251,11 +275,12 @@ export const ChatWindow: React.FC = () => {
 
         fetchMessages();
 
+        // Set up chat message pusher
         const channelName = getChannelName(senderId, recipientId);
-        const pusher = new Pusher("33466c91963fd345d327", { cluster: "ap2" });
-        const channel = pusher.subscribe(channelName);
+        const messagePusher = new Pusher(PUSHER_KEY, { cluster: PUSHER_CLUSTER });
+        const messageChannel = messagePusher.subscribe(channelName);
 
-        channel.bind("new-message", (data: Message) => {
+        messageChannel.bind("new-message", (data: Message) => {
             setStoredMessages((prevMessages) => {
                 // Check if the message already exists to avoid duplicates
                 if (prevMessages.some((msg) => msg.messageId === data.messageId)) {
@@ -268,22 +293,99 @@ export const ChatWindow: React.FC = () => {
         });
 
         return () => {
-            channel.unbind_all();
-            channel.unsubscribe();
+            messageChannel.unbind_all();
+            messageChannel.unsubscribe();
+            messagePusher.disconnect();
         };
     }, [recipientId, senderId, getChatHistory]);
 
+    // Handle online status with Pusher presence channels
+    useEffect(() => {
+        // Configure Pusher for presence channels
+        const presencePusher = new Pusher(PUSHER_KEY, {
+            cluster: PUSHER_CLUSTER,
+            authEndpoint: `${SERVER_URL}/pusher/auth`,
+            auth: {
+                params: {
+                    user_id: senderId
+                }
+            }
+        });
+
+        // Subscribe to presence channel for recipient
+        const presenceChannelName = `presence-user-${recipientId}`;
+        const presenceChannel = presencePusher.subscribe(presenceChannelName);
+
+        // Subscribe to own presence channel to broadcast online status
+        const myPresenceChannel = presencePusher.subscribe(`presence-user-${senderId}`);
+
+        // Set online status when subscription succeeds
+        presenceChannel.bind("pusher:subscription_succeeded", (members: any) => {
+            // If there are members in the channel (including the recipient), they're online
+            const isOnline = members.count > 0;
+            setIsRecipientOnline(isOnline);
+        });
+
+        // When recipient comes online
+        presenceChannel.bind("pusher:member_added", (member: any) => {
+            if (member.id === recipientId) {
+                setIsRecipientOnline(true);
+            }
+        });
+
+        // When recipient goes offline
+        presenceChannel.bind("pusher:member_removed", (member: any) => {
+            if (member.id === recipientId) {
+                setIsRecipientOnline(false);
+            }
+        });
+
+        // When page loads, mark user as online
+        updateUserStatus("online");
+
+        // Set up heartbeat to maintain presence
+        const heartbeatInterval = setInterval(() => {
+            // Ping the server to keep presence active
+            updateUserStatus("online");
+        }, 30000); // Every 30 seconds
+
+        // When component unmounts or user changes
+        return () => {
+            clearInterval(heartbeatInterval);
+            presenceChannel.unbind_all();
+            presenceChannel.unsubscribe();
+            myPresenceChannel.unbind_all();
+            myPresenceChannel.unsubscribe();
+            presencePusher.disconnect();
+        };
+    }, [recipientId, senderId]);
+
+    // Group messages when stored messages change
     useEffect(() => {
         setGroupedMessages(groupMessagesByDate(storedMessages));
     }, [storedMessages, groupMessagesByDate]);
 
+    // Reset file-related states when changing recipient
     useEffect(() => {
-        // Reset file-related states when changing recipient
         setLocalFileUrl("");
         setUploadedFileUrl("");
         setFileName("");
         setFileType("");
     }, [recipientId]);
+
+    // Set window unload listener to update status when user leaves
+    useEffect(() => {
+        const handleBeforeUnload = () => {
+            updateUserStatus("offline");
+        };
+
+        window.addEventListener("beforeunload", handleBeforeUnload);
+        
+        return () => {
+            window.removeEventListener("beforeunload", handleBeforeUnload);
+            updateUserStatus("offline");
+        };
+    }, [senderId]);
 
     return (
         <div className="w-[100%] lg:w-[75%] flex">
@@ -300,18 +402,15 @@ export const ChatWindow: React.FC = () => {
                     <div className="w-[95%] flex flex-col items-center h-[80vh]">
                         {groupedMessages.map((group) => (
                             <div key={group.timestamp} className="w-full">
-                                {/* Only show date header if it's not empty (not Today) */}
                                 {group.date && (
                                     <div className="flex justify-center my-4 items-center">
                                         <span className="bg-slate w-full h-[1px]"></span>
-                                        <span className="bg-gray-100 rounded-full px-3 py-1 text-sm text-slate mx-2">
+                                        <span className="bg-gray-100 rounded-full px-3 py-1 text-sm text-slate mx-[1px]">
                                             {group.date}
                                         </span>
                                         <span className="bg-slate w-full h-[1px]"></span>
                                     </div>
                                 )}
-                                
-                                {/* Messages in this group */}
                                 {group.messages.map((msg) => (
                                     <ChatMessage
                                         key={msg.messageId}

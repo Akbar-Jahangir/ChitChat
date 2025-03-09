@@ -52,7 +52,7 @@ export const ChatMessage: React.FC<MessageBubbleProps> = React.memo(({ messageCo
     return (
         <>
             {/* Chat Message */}
-            <div className={`w-[95%] flex ${senderId === currentUserId ? "justify-end" : "justify-start"} my-4`}>
+            <div className={`w-[100%] flex ${senderId === currentUserId ? "justify-end" : "justify-start"} my-4`}>
                 <div>
                     {senderId === currentUserId ? (
                         <div className="flex items-end gap-x-1">
