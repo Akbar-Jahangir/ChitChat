@@ -6,5 +6,6 @@ export interface Message {
   timestamp: number;
   fileUrl?: string;
   fileName?:string
-  fileType?: string; // Add this line to store the file type
+  fileType?: string; 
+  isRead?: boolean;
 }

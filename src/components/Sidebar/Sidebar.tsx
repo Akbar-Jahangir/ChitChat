@@ -49,7 +49,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ alignment = null }) => {
     const fetchMessages = async () => {
       try {
         const allMessages = await getChatHistory(senderId, recipientId);
-        console.log("All messages:", allMessages); // Debug log
+       
         
         const filteredMessages = allMessages.filter(
           (msg) =>
@@ -57,8 +57,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ alignment = null }) => {
             (msg.senderId === recipientId && msg.recipientId === senderId)
         );
         filteredMessages.sort((a, b) => a.timestamp - b.timestamp);
-        
-        console.log("Filtered messages:", filteredMessages); // Debug log
 
         // Extract media items from messages
         const extractedMediaItems: Message[] = [];
@@ -97,7 +95,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ alignment = null }) => {
           }
         });
 
-        console.log("Extracted media items:", extractedMediaItems); // Debug log
+       
         setMediaItems(extractedMediaItems);
       } catch (error) {
         console.error("Error fetching chat history:", error);
