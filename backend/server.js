@@ -26,6 +26,10 @@ const pusher = new Pusher({
   useTLS: true,
 });
 
+// Track online users (in-memory store)
+// In production, you'd use Redis or another distributed cache
+const onlineUsers = new Set();
+
 // Health check endpoint
 app.get("/health-check", (req, res) => {
   res.status(200).json({ status: "ok" });
@@ -88,26 +92,71 @@ app.post("/pusher/auth", (req, res) => {
   }
 });
 
-// User status update endpoint
-app.post("/user-status", async (req, res) => {
-  const { userId, status } = req.body;
+// User joining presence channel
+app.post("/join-presence", async (req, res) => {
+  const { userId } = req.body;
   
   if (!userId) {
     return res.status(400).json({ error: "User ID is required" });
   }
 
   try {
-    // Trigger an event to all clients about user status change
-    await pusher.trigger("user-status", "status-change", {
-      userId,
-      status: status || "online"
+    // Add user to our in-memory store
+    onlineUsers.add(userId);
+    
+    // Trigger an event to the shared presence channel about the new user
+    await pusher.trigger("presence-users", "pusher:member_added", {
+      id: userId,
+      info: { name: userId }
     });
     
-    res.status(200).json({ success: true });
+    console.log(`User ${userId} is now online. Total online users: ${onlineUsers.size}`);
+    res.status(200).json({ 
+      success: true,
+      onlineCount: onlineUsers.size,
+      onlineUsers: Array.from(onlineUsers)
+    });
   } catch (error) {
-    console.error("Status update error:", error);
-    res.status(500).json({ error: "Failed to update status" });
+    console.error("Join presence error:", error);
+    res.status(500).json({ error: "Failed to update presence status" });
   }
+});
+
+// User leaving presence channel
+app.post("/leave-presence", async (req, res) => {
+  const { userId } = req.body;
+  
+  if (!userId) {
+    return res.status(400).json({ error: "User ID is required" });
+  }
+
+  try {
+    // Remove user from our in-memory store
+    onlineUsers.delete(userId);
+    
+    // Trigger an event to the shared presence channel about the user leaving
+    await pusher.trigger("presence-users", "pusher:member_removed", {
+      id: userId
+    });
+    
+    console.log(`User ${userId} is now offline. Total online users: ${onlineUsers.size}`);
+    res.status(200).json({ 
+      success: true,
+      onlineCount: onlineUsers.size,
+      onlineUsers: Array.from(onlineUsers)
+    });
+  } catch (error) {
+    console.error("Leave presence error:", error);
+    res.status(500).json({ error: "Failed to update presence status" });
+  }
+});
+
+// Get all online users
+app.get("/online-users", (req, res) => {
+  res.status(200).json({
+    onlineCount: onlineUsers.size,
+    onlineUsers: Array.from(onlineUsers)
+  });
 });
 
 // Start the server

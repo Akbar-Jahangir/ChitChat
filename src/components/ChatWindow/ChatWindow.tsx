@@ -243,19 +243,17 @@ export const ChatWindow: React.FC = () => {
         return `chat-${sortedIds[0]}-${sortedIds[1]}`;
     };
 
-    // Update user status on the server
-    const updateUserStatus = async (status: "online" | "offline") => {
+    // Join or leave presence channel
+    const updatePresence = async (action: "join" | "leave") => {
+        const endpoint = action === "join" ? "join-presence" : "leave-presence";
         try {
-            await fetch(`${SERVER_URL}/user-status`, {
+            await fetch(`${SERVER_URL}/${endpoint}`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    userId: senderId,
-                    status
-                }),
+                body: JSON.stringify({ userId: senderId }),
             });
         } catch (error) {
-            console.error("Error updating user status:", error);
+            console.error(`Error ${action} presence:`, error);
         }
     };
 
@@ -312,28 +310,25 @@ export const ChatWindow: React.FC = () => {
             }
         });
 
-        // Subscribe to presence channel for recipient
-        const presenceChannelName = `presence-user-${recipientId}`;
+        // Subscribe to presence channel for ALL users
+        const presenceChannelName = `presence-users`;
         const presenceChannel = presencePusher.subscribe(presenceChannelName);
-
-        // Subscribe to own presence channel to broadcast online status
-        const myPresenceChannel = presencePusher.subscribe(`presence-user-${senderId}`);
 
         // Set online status when subscription succeeds
         presenceChannel.bind("pusher:subscription_succeeded", (members: any) => {
-            // If there are members in the channel (including the recipient), they're online
-            const isOnline = members.count > 0;
+            // Check if recipient is in the members list
+            const isOnline = members.members && members.members[recipientId] !== undefined;
             setIsRecipientOnline(isOnline);
         });
 
-        // When recipient comes online
+        // When someone comes online
         presenceChannel.bind("pusher:member_added", (member: any) => {
             if (member.id === recipientId) {
                 setIsRecipientOnline(true);
             }
         });
 
-        // When recipient goes offline
+        // When someone goes offline
         presenceChannel.bind("pusher:member_removed", (member: any) => {
             if (member.id === recipientId) {
                 setIsRecipientOnline(false);
@@ -341,12 +336,11 @@ export const ChatWindow: React.FC = () => {
         });
 
         // When page loads, mark user as online
-        updateUserStatus("online");
+        updatePresence("join");
 
         // Set up heartbeat to maintain presence
         const heartbeatInterval = setInterval(() => {
-            // Ping the server to keep presence active
-            updateUserStatus("online");
+            updatePresence("join");
         }, 30000); // Every 30 seconds
 
         // When component unmounts or user changes
@@ -354,9 +348,10 @@ export const ChatWindow: React.FC = () => {
             clearInterval(heartbeatInterval);
             presenceChannel.unbind_all();
             presenceChannel.unsubscribe();
-            myPresenceChannel.unbind_all();
-            myPresenceChannel.unsubscribe();
             presencePusher.disconnect();
+            
+            // Notify server that user is going offline
+            updatePresence("leave");
         };
     }, [recipientId, senderId]);
 
@@ -376,14 +371,14 @@ export const ChatWindow: React.FC = () => {
     // Set window unload listener to update status when user leaves
     useEffect(() => {
         const handleBeforeUnload = () => {
-            updateUserStatus("offline");
+            updatePresence("leave");
         };
 
         window.addEventListener("beforeunload", handleBeforeUnload);
         
         return () => {
             window.removeEventListener("beforeunload", handleBeforeUnload);
-            updateUserStatus("offline");
+            updatePresence("leave");
         };
     }, [senderId]);
 
