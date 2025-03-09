@@ -14,7 +14,8 @@ app.use(cors({
     // Allow requests from any origin in development
     const allowedOrigins = [
       process.env.CLIENT_URL || "https://chit-chat-pink.vercel.app",
-      "http://localhost:3000"  // Add your local development URL
+      "http://localhost:3000",
+      "http://localhost:5173"  // Added this line to support your local dev server
     ];
     
     // Check if the request origin is in our allowed origins list

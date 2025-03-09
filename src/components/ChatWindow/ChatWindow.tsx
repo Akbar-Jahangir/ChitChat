@@ -42,6 +42,7 @@ interface PusherMembers {
 // Define Pusher keys and server URL
 const PUSHER_KEY = "33466c91963fd345d327";
 const PUSHER_CLUSTER = "ap2";
+// Make sure this points to your Vercel backend URL
 const SERVER_URL = "https://chit-chat.koyeb.app";
 
 export const ChatWindow: React.FC = () => {
