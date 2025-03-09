@@ -76,41 +76,41 @@ export const ChatWindow: React.FC = () => {
         { id: 2, icon: <CameraIconSvg />, accept: "image/*,video/*" },
     ];
 
-    // Format date for message grouping
-    const formatMessageDate = (timestamp: number): { display: string; timestamp: number } => {
-        const messageDate = new Date(timestamp);
-        const today = new Date();
-        const yesterday = new Date(today);
-        yesterday.setDate(yesterday.getDate() - 1);
+   
+const formatMessageDate = (timestamp: number): { display: string; timestamp: number } => {
+    const messageDate = new Date(timestamp);
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
 
-        // Reset hours to compare just the dates
-        const messageDay = new Date(messageDate.getFullYear(), messageDate.getMonth(), messageDate.getDate());
-        const todayDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-        const yesterdayDay = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate());
+    // Reset hours to compare just the dates
+    const messageDay = new Date(messageDate.getFullYear(), messageDate.getMonth(), messageDate.getDate());
+    const todayDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const yesterdayDay = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate());
 
-        // We'll use the timestamp at midnight of each day for sorting
-        const midnightTimestamp = new Date(
-            messageDate.getFullYear(),
-            messageDate.getMonth(),
-            messageDate.getDate()
-        ).getTime();
+    // We'll use the timestamp at midnight of each day for sorting
+    const midnightTimestamp = new Date(
+        messageDate.getFullYear(),
+        messageDate.getMonth(),
+        messageDate.getDate()
+    ).getTime();
 
-        if (messageDay.getTime() === todayDay.getTime()) {
-            return { display: "", timestamp: midnightTimestamp }; // Empty string for today - no header will show
-        } else if (messageDay.getTime() === yesterdayDay.getTime()) {
-            return { display: "Yesterday", timestamp: midnightTimestamp };
-        } else {
-            // Format as "March 7, 2025" for older dates
-            return {
-                display: messageDate.toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric'
-                }),
-                timestamp: midnightTimestamp
-            };
-        }
-    };
+    if (messageDay.getTime() === todayDay.getTime()) {
+        return { display: "", timestamp: midnightTimestamp }; // Empty string for today - no header will show
+    } else if (messageDay.getTime() === yesterdayDay.getTime()) {
+        return { display: "Yesterday", timestamp: midnightTimestamp };
+    } else {
+        // Format as "3/7/2025" instead of "March 7, 2025"
+        return {
+            display: messageDate.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'numeric',  // Changed from 'long' to 'numeric'
+                day: 'numeric'
+            }),
+            timestamp: midnightTimestamp
+        };
+    }
+};
 
     // Group messages by date
     const groupMessagesByDate = useCallback((messages: Message[]) => {
@@ -136,16 +136,19 @@ export const ChatWindow: React.FC = () => {
 
     const checkServerStatus = async () => {
         try {
+            console.log("Checking server status at:", `${SERVER_URL}/health-check`);
             const response = await fetch(`${SERVER_URL}/health-check`, {
                 method: "GET",
-                headers: { "Cache-Control": "no-cache" }, // Ensures fresh request
+                headers: { "Cache-Control": "no-cache" },
             });
-
+            
             if (!response.ok) {
+                console.error("Server returned status:", response.status);
                 return false;
             }
-
+            
             const data = await response.json();
+            console.log("Server response:", data);
             return data.status === "ok";
         } catch (error) {
             console.error("Error checking server status:", error);
@@ -367,12 +370,12 @@ export const ChatWindow: React.FC = () => {
         };
     }, [recipientId, senderId]);
 
-    // Group messages when stored messages change
+
     useEffect(() => {
         setGroupedMessages(groupMessagesByDate(storedMessages));
     }, [storedMessages, groupMessagesByDate]);
 
-    // Reset file-related states when changing recipient
+  
     useEffect(() => {
         setLocalFileUrl("");
         setUploadedFileUrl("");
@@ -380,7 +383,7 @@ export const ChatWindow: React.FC = () => {
         setFileType("");
     }, [recipientId]);
 
-    // Set window unload listener to update status when user leaves
+
     useEffect(() => {
         const handleBeforeUnload = () => {
             updatePresence("leave");
@@ -412,7 +415,7 @@ export const ChatWindow: React.FC = () => {
                                 {group.date && (
                                     <div className="flex justify-center my-4 items-center">
                                         <span className="bg-slate w-full h-[1px]"></span>
-                                        <span className="bg-gray-100 rounded-full px-3 py-1 text-sm text-slate mx-[1px]">
+                                        <span className="bg-gray-100 rounded-full px-3 py-1 text-sm text-slate mx-[1px] w-fit">
                                             {group.date}
                                         </span>
                                         <span className="bg-slate w-full h-[1px]"></span>

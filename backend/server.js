@@ -8,18 +8,16 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 8000;
 
-// Configure CORS properly for all environments
 app.use(cors({
   origin: function(origin, callback) {
-    // Allow requests from any origin in development
+    
     const allowedOrigins = [
       process.env.CLIENT_URL || "https://chit-chat-pink.vercel.app",
       "http://localhost:3000",
-      "http://localhost:5173"  // Added this line to support your local dev server
+      "http://localhost:5173"  
     ];
     
-    // Check if the request origin is in our allowed origins list
-    // or allow requests with no origin (like mobile apps or curl)
+   
     if (!origin || allowedOrigins.indexOf(origin) !== -1) {
       callback(null, true);
     } else {
@@ -27,16 +25,16 @@ app.use(cors({
       callback(new Error('Not allowed by CORS'));
     }
   },
-  credentials: true,  // Important for cookies/auth
+  credentials: true,  
   methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
   allowedHeaders: ["Content-Type", "Authorization"]
 }));
 
-// Add body parser middleware
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Configure Pusher
+
 const pusher = new Pusher({
   appId: process.env.PUSHER_APP_ID,
   key: process.env.PUSHER_KEY,
@@ -45,27 +43,25 @@ const pusher = new Pusher({
   useTLS: true,
 });
 
-// Track online users (in-memory store)
-// In production, you'd use Redis or another distributed cache
 const onlineUsers = new Set();
 
-// Add request logging middleware
+
 app.use((req, res, next) => {
   console.log(`${req.method} ${req.url}`);
   next();
 });
 
-// Health check endpoint
+
 app.get("/health-check", (req, res) => {
   res.status(200).json({ status: "ok" });
 });
 
-// Root endpoint
+
 app.get("/", (req, res) => {
   res.send("Server is running!");
 });
 
-// Send message endpoint
+
 app.post("/send-message", async (req, res) => {
   console.log("Received message data:", req.body);
 
@@ -85,7 +81,7 @@ app.post("/send-message", async (req, res) => {
   }
 });
 
-// Pusher authentication endpoint for presence channels
+
 app.post("/pusher/auth", (req, res) => {
   const socketId = req.body.socket_id;
   const channel = req.body.channel_name;

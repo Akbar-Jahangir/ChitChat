@@ -51,20 +51,21 @@ export const ChatItem: React.FC<ChatItemProps> = React.memo(({ searchValue }) =>
     yesterday.setDate(today.getDate() - 1);
 
     const isToday =
-      messageDate.getDate() === today.getDate() &&
-      messageDate.getMonth() === today.getMonth() &&
-      messageDate.getFullYear() === today.getFullYear();
+        messageDate.getDate() === today.getDate() &&
+        messageDate.getMonth() === today.getMonth() &&
+        messageDate.getFullYear() === today.getFullYear();
 
     const isYesterday =
-      messageDate.getDate() === yesterday.getDate() &&
-      messageDate.getMonth() === yesterday.getMonth() &&
-      messageDate.getFullYear() === yesterday.getFullYear();
+        messageDate.getDate() === yesterday.getDate() &&
+        messageDate.getMonth() === yesterday.getMonth() &&
+        messageDate.getFullYear() === yesterday.getFullYear();
 
     if (isToday) return "Today";
     if (isYesterday) return "Yesterday";
 
-    return messageDate.toLocaleDateString("en-US", { month: "short", day: "2-digit", year: "numeric" });
-  };
+    // Return month number instead of name: "MM/DD/YYYY" format
+    return `${messageDate.getMonth() + 1}/${messageDate.getDate()}/${messageDate.getFullYear().toString().slice(2)}`;
+};
 
   const getLastMessage = (userId: string): Message | null => {
     if (!messages) return null;

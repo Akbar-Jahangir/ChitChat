@@ -8,29 +8,20 @@ export const Header: React.FC<HeaderProps> = ({ userInfo, actionIcons }) => {
   return (
     <div className="w-full flex items-center justify-between py-2">
       <div className="flex items-center">
-        <div className="relative">
+        <div className="flex gap-2 items-center">
           <img
             src={userInfo.profilePicUrl || BlankImg}
             alt={userInfo.username}
             className="w-12 h-12 rounded-full object-cover"
           />
-          
-          {/* Online status indicator */}
-          {userInfo.isOnline !== undefined && (
-            <div className="absolute -bottom-1 -right-1">
+           <p className="text-sm font-semibold text-primary w-[55%] truncate">{userInfo.username}</p>
+        </div>
+        
+        {userInfo.isOnline === true && (
+            <div>
               <OnlineIconSvg />
             </div>
           )}
-        </div>
-        
-        <div className="ml-3">
-          <h3 className="font-medium text-darkPrimary">{userInfo.username}</h3>
-          {userInfo.isOnline !== undefined && (
-            <p className="text-xs text-slate">
-              {userInfo.isOnline ? "Online" : "Offline"}
-            </p>
-          )}
-        </div>
       </div>
       
       <div className="flex items-center gap-x-4">
