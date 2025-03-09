@@ -4,7 +4,7 @@ import { MessageBubbleProps } from "./messageBubble.interface";
 import { SenderContext, RecipientContext } from "../../contexts/ChatContext";
 import { DocsThumbnailSvg, PdfThumbnailSvg, PowerPointThumbnailSvg, XcelThumbnailSvg } from "../Svgs";
 
-export const ChatMessage: React.FC<MessageBubbleProps> = React.memo(({ messageContent, senderId, fileUrl, fileName }) => {
+export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ messageContent, senderId, fileUrl, fileName }) => {
     const [isExpanded, setIsExpanded] = useState<boolean>(false);
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
     const { senderId: currentUserId, senderPicUrl } = useContext(SenderContext);
@@ -50,111 +50,6 @@ export const ChatMessage: React.FC<MessageBubbleProps> = React.memo(({ messageCo
         );
     };
 
-    // File component to avoid duplicating code
-    const FileContent = ({ fileUrl, fileName }: { fileUrl: string, fileName: string }) => {
-        if (isImage(fileName)) {
-            return (
-                <img
-                    src={fileUrl}
-                    alt="Uploaded"
-                    className="rounded-lg max-w-[200px] mb-2"
-                    onClick={() => setSelectedImage(fileUrl)}
-                />
-            );
-        } else if (isVideo(fileName)) {
-            return (
-                <video controls className="rounded-lg max-w-[300px] mb-2">
-                    <source src={fileUrl} type="video/mp4" />
-                    Your browser does not support the video tag.
-                </video>
-            );
-        } else if (isDocument(fileName)) {
-            return (
-                <div className="w-full flex flex-col items-center mb-2">
-                    <a
-                        href={fileUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-primary block items-center gap-2"
-                    >
-                        <div className="flex justify-center">
-                            <DocsThumbnailSvg />
-                        </div>
-                    </a>
-                    <p className="text-sm text-primary max-w-[150px] truncate">{fileName}</p>
-                </div>
-            );
-        } else if (isPowerPoint(fileName)) {
-            return (
-                <div className="w-full flex flex-col items-center mb-2">
-                    <a
-                        href={fileUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-primary block items-center gap-2"
-                    >
-                        <div className="flex justify-center">
-                            <PowerPointThumbnailSvg />
-                        </div>
-                    </a>
-                    <p className="text-sm text-primary max-w-[150px] truncate">{fileName}</p>
-                </div>
-            );
-        } else if (isExcel(fileName)) {
-            return (
-                <div className="w-full flex flex-col items-center mb-2">
-                    <a
-                        href={fileUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-primary block items-center gap-2"
-                    >
-                        <div className="flex justify-center max-w-[250px]">
-                            <XcelThumbnailSvg />
-                        </div>
-                    </a>
-                    <p className="text-sm text-primary max-w-[150px] truncate">{fileName}</p>
-                </div>
-            );
-        } else if (isAudio(fileName)) {
-            return (
-                <audio controls className="mb-2">
-                    <source src={fileUrl} type="audio/mp3" />
-                    Your browser does not support the audio element.
-                </audio>
-            );
-        } else if (isPdf(fileName)) {
-            return (
-                <div className="w-full flex flex-col items-center mb-2">
-                    <a
-                        href={fileUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-primary block items-center gap-2"
-                    >
-                        <div className="flex justify-center">
-                            <PdfThumbnailSvg />
-                        </div>
-                    </a>
-                    <p className="text-sm text-primary max-w-[150px] truncate">{fileName}</p>
-                </div>
-            );
-        } else {
-            return (
-                <a
-                    href={fileUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-primary block mb-2"
-                >
-                    View File
-                </a>
-            );
-        }
-    };
-
-   
-
     return (
         <>
             {/* Chat Message */}
@@ -163,14 +58,95 @@ export const ChatMessage: React.FC<MessageBubbleProps> = React.memo(({ messageCo
                     {senderId === currentUserId ? (
                         <div className="flex items-end gap-x-1">
                             <div className="mt-2 max-w-xs">
-                                {/* Container for both file and text - sender side */}
-                                <div className={`rounded-[10px] rounded-br-none ${messageContent ? "bg-primary p-2" : ""}`}>
-                                    {fileUrl && fileName && (
-                                        <FileContent fileUrl={fileUrl} fileName={fileName} />
+                                {/* Container for sender's messages */}
+                                <div className={`${messageContent && fileUrl ? "bg-primary p-2 rounded-[10px] rounded-br-none" : ""}`}>
+                                    {fileUrl && (
+                                        isImage(fileName!) ? (
+                                            <img
+                                                src={fileUrl}
+                                                alt="Uploaded"
+                                                className={`rounded-lg max-w-[200px] ${messageContent ? "mb-2" : ""} cursor-pointer`}
+                                                onClick={() => setSelectedImage(fileUrl)}
+                                            />
+                                        ) : isVideo(fileName!) ? (
+                                            <video controls className={`rounded-lg max-w-[300px] ${messageContent ? "mb-2" : ""}`}>
+                                                <source src={fileUrl} type="video/mp4" />
+                                                Your browser does not support the video tag.
+                                            </video>
+                                        ) : isDocument(fileName!) ? (
+                                            <div className={`w-full flex flex-col items-center ${messageContent ? "mb-2" : ""}`}>
+                                                <a
+                                                    href={fileUrl}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="text-primary block items-center gap-2"
+                                                >
+                                                    <div className="flex justify-center">
+                                                        <DocsThumbnailSvg />
+                                                    </div>
+                                                </a>
+                                                <p className="text-sm text-primary max-w-[150px] truncate">{fileName}</p>
+                                            </div>
+                                        ) : isPowerPoint(fileName!) ? (
+                                            <div className={`w-full flex flex-col items-center ${messageContent ? "mb-2" : ""}`}>
+                                                <a
+                                                    href={fileUrl}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="text-primary block items-center gap-2"
+                                                >
+                                                    <div className="flex justify-center">
+                                                        <PowerPointThumbnailSvg />
+                                                    </div>
+                                                </a>
+                                                <p className="text-sm text-primary max-w-[150px] truncate">{fileName}</p>
+                                            </div>
+                                        ) : isExcel(fileName!) ? (
+                                            <div className={`w-full flex flex-col items-center ${messageContent ? "mb-2" : ""}`}>
+                                                <a
+                                                    href={fileUrl}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="text-primary block items-center gap-2"
+                                                >
+                                                    <div className="flex justify-center max-w-[250px]">
+                                                        <XcelThumbnailSvg />
+                                                    </div>
+                                                </a>
+                                                <p className="text-sm text-primary max-w-[150px] truncate">{fileName}</p>
+                                            </div>
+                                        ) : isAudio(fileName!) ? (
+                                            <audio controls className={messageContent ? "mb-2" : ""}>
+                                                <source src={fileUrl} type="audio/mp3" />
+                                                Your browser does not support the audio element.
+                                            </audio>
+                                        ) : isPdf(fileName!) ? (
+                                            <div className={`w-full flex flex-col items-center ${messageContent ? "mb-2" : ""}`}>
+                                                <a
+                                                    href={fileUrl}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="text-primary block items-center gap-2"
+                                                >
+                                                    <div className="flex justify-center">
+                                                        <PdfThumbnailSvg />
+                                                    </div>
+                                                </a>
+                                                <p className="text-sm text-primary max-w-[150px] truncate">{fileName}</p>
+                                            </div>
+                                        ) :
+                                            <a
+                                                href={fileUrl}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className={`text-primary block ${messageContent ? "mb-2" : ""}`}
+                                            >
+                                                View File
+                                            </a>
                                     )}
-                                    
+
                                     {messageContent && (
-                                        <div className={fileUrl ? "mt-2" : ""}>
+                                        <div className={!fileUrl ? "bg-primary text-black rounded-[10px] rounded-br-none p-2 break-words" : ""}>
                                             {isExpanded || messageContent.length <= maxChars
                                                 ? messageContent
                                                 : `${messageContent.slice(0, maxChars)} `}
@@ -189,14 +165,95 @@ export const ChatMessage: React.FC<MessageBubbleProps> = React.memo(({ messageCo
                         <div className="flex items-end gap-x-1">
                             <img src={recipientPicUrl || BlankImg} className="w-[25px] h-[25px] rounded-full" />
                             <div className="mt-2 max-w-xs">
-                                {/* Container for both file and text - recipient side */}
-                                <div className={`rounded-[10px] rounded-bl-none ${messageContent ? "bg-lavenderBlue p-2" : ""}`}>
-                                    {fileUrl && fileName && (
-                                        <FileContent fileUrl={fileUrl} fileName={fileName} />
+                                {/* Container for recipient's messages */}
+                                <div className={`${messageContent && fileUrl ? "bg-lavenderBlue p-2 rounded-[10px] rounded-bl-none" : ""}`}>
+                                    {fileUrl && (
+                                        isImage(fileName!) ? (
+                                            <img
+                                                src={fileUrl}
+                                                alt="Uploaded"
+                                                className={`rounded-lg max-w-[200px] ${messageContent ? "mb-2" : ""} cursor-pointer`}
+                                                onClick={() => setSelectedImage(fileUrl)}
+                                            />
+                                        ) : isVideo(fileName!) ? (
+                                            <video controls className={`rounded-lg max-w-[300px] ${messageContent ? "mb-2" : ""}`}>
+                                                <source src={fileUrl} type="video/mp4" />
+                                                Your browser does not support the video tag.
+                                            </video>
+                                        ) : isDocument(fileName!) ? (
+                                            <div className={`w-full flex flex-col items-center ${messageContent ? "mb-2" : ""}`}>
+                                                <a
+                                                    href={fileUrl}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="text-primary block items-center gap-2"
+                                                >
+                                                    <div className="flex justify-center">
+                                                        <DocsThumbnailSvg />
+                                                    </div>
+                                                </a>
+                                                <p className="text-sm text-primary max-w-[150px] truncate">{fileName}</p>
+                                            </div>
+                                        ) : isPowerPoint(fileName!) ? (
+                                            <div className={`w-full flex flex-col items-center ${messageContent ? "mb-2" : ""}`}>
+                                                <a
+                                                    href={fileUrl}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="text-primary block items-center gap-2"
+                                                >
+                                                    <div className="flex justify-center">
+                                                        <PowerPointThumbnailSvg />
+                                                    </div>
+                                                </a>
+                                                <p className="text-sm text-primary max-w-[150px] truncate">{fileName}</p>
+                                            </div>
+                                        ) : isExcel(fileName!) ? (
+                                            <div className={`w-full flex flex-col items-center ${messageContent ? "mb-2" : ""}`}>
+                                                <a
+                                                    href={fileUrl}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="text-primary block items-center gap-2"
+                                                >
+                                                    <div className="flex justify-center max-w-[250px]">
+                                                        <XcelThumbnailSvg />
+                                                    </div>
+                                                </a>
+                                                <p className="text-sm text-primary max-w-[150px] truncate">{fileName}</p>
+                                            </div>
+                                        ) : isAudio(fileName!) ? (
+                                            <audio controls className={messageContent ? "mb-2" : ""}>
+                                                <source src={fileUrl} type="audio/mp3" />
+                                                Your browser does not support the audio element.
+                                            </audio>
+                                        ) : isPdf(fileName!) ? (
+                                            <div className={`w-full flex flex-col items-center ${messageContent ? "mb-2" : ""}`}>
+                                                <a
+                                                    href={fileUrl}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    className="text-primary block items-center gap-2"
+                                                >
+                                                    <div className="flex justify-center">
+                                                        <PdfThumbnailSvg />
+                                                    </div>
+                                                </a>
+                                                <p className="text-sm text-primary max-w-[150px] truncate">{fileName}</p>
+                                            </div>
+                                        ) :
+                                            <a
+                                                href={fileUrl}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className={`text-primary block ${messageContent ? "mb-2" : ""}`}
+                                            >
+                                                View File
+                                            </a>
                                     )}
-                                    
+
                                     {messageContent && (
-                                        <div className={fileUrl ? "mt-2" : ""}>
+                                        <div className={!fileUrl ? "bg-lavenderBlue text-black rounded-[10px] rounded-bl-none p-2 break-words" : ""}>
                                             {isExpanded || messageContent.length <= maxChars
                                                 ? messageContent
                                                 : `${messageContent.slice(0, maxChars)} `}
@@ -214,6 +271,7 @@ export const ChatMessage: React.FC<MessageBubbleProps> = React.memo(({ messageCo
                 </div>
             </div>
 
+            {/* Image preview modal - kept exactly the same as original */}
             {selectedImage && (
                 <div
                     className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50"

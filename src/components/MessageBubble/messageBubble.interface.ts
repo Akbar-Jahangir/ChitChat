@@ -3,4 +3,6 @@ export interface MessageBubbleProps {
   senderId: string;
   fileUrl?: string;
   fileName?:string
+  messageId:string
+  onDeleteMessage?: (messageId: string) => void; 
 }

@@ -16,7 +16,7 @@ import { SenderContext, RecipientContext } from "../../contexts/ChatContext";
 import { uid } from "uid";
 import useDatabase from "../../hooks/useDatabase";
 import { Message } from "../../interfaces/message.interface";
-import { ChatMessage } from "../MessageBubble";
+import { MessageBubble } from "../MessageBubble";
 import { Textarea } from "../Textarea/Textarea";
 import { ref, uploadBytes, getDownloadURL, storage } from "../../utils/firebaseConfig";
 import FilePreview from "../FilePreview/FilePreview";
@@ -54,14 +54,16 @@ export const ChatWindow: React.FC = () => {
     const [fileName, setFileName] = useState<string>("");
     const [fileType, setFileType] = useState<string>("");
     const [isRecipientOnline, setIsRecipientOnline] = useState<boolean>(false);
+    const [searchValue, setSearchValue] = useState<string>("");
+    const [filteredMessages, setFilteredMessages] = useState<Message[]>([]);
    
-    
     // Refs to track connection states
     const pusherRef = useRef<Pusher | null>(null);
     const messageChannelRef = useRef<Channel | null>(null);
     const presenceChannelRef = useRef<PresenceChannel | null>(null);
     const heartbeatIntervalRef = useRef<NodeJS.Timeout | null>(null);
     const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const lastPresenceUpdateRef = useRef<number>(0);
 
     const { saveMessage, getChatHistory } = useDatabase();
 
@@ -143,8 +145,6 @@ export const ChatWindow: React.FC = () => {
 
     const sendMessageToServer = async (messageData: Message) => {
         try {
-            console.log("Sending message to server at:", `${SERVER_URL}/send-message`);
-            
             const response = await fetch(`${SERVER_URL}/send-message`, {
                 method: "POST",
                 headers: { 
@@ -162,8 +162,7 @@ export const ChatWindow: React.FC = () => {
                 return false;
             }
     
-            const responseData = await response.json();
-            console.log("Message sent successfully!", responseData);
+           
             return true;
         } catch (error) {
             console.error("Error sending message:", error);
@@ -242,16 +241,22 @@ export const ChatWindow: React.FC = () => {
     };
 
     // Join or leave presence channel
-    const updatePresence = useCallback(async (action: "join" | "leave") => {
+    const updatePresence = useCallback(async (action: "join" | "leave", force: boolean = false) => {
         if (!senderId) {
-            console.warn("Cannot update presence: senderId is not defined");
             return;
         }
         
+        const now = Date.now();
+        // Only update presence if forced or if it's been more than 2 minutes since the last update
+        // This prevents unnecessary API calls
+        if (!force && action === "join" && (now - lastPresenceUpdateRef.current < 120000)) {
+            return;
+        }
+        
+        lastPresenceUpdateRef.current = now;
         const endpoint = action === "join" ? "join-presence" : "leave-presence";
+        
         try {
-            console.log(`${action === "join" ? "Joining" : "Leaving"} presence channel for user ${senderId}`);
-            
             const response = await fetch(`${SERVER_URL}/${endpoint}`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -263,18 +268,30 @@ export const ChatWindow: React.FC = () => {
                 console.error(`Failed to ${action} presence. Server response:`, errorText);
                 return;
             }
-            
-            const data = await response.json();
-            console.log(`Successfully ${action === "join" ? "joined" : "left"} presence:`, data);
         } catch (error) {
             console.error(`Error ${action} presence:`, error);
         }
     }, [senderId]);
 
+    // Ping the server to maintain the connection without updating presence
+    const sendHeartbeat = useCallback(async () => {
+        if (!senderId || pusherRef.current?.connection.state !== "connected") {
+            return;
+        }
+        
+        try {
+            await fetch(`${SERVER_URL}/heartbeat`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ userId: senderId }),
+            });
+        } catch (error) {
+            console.error("Heartbeat error:", error);
+        }
+    }, [senderId]);
+
     // Clean up all Pusher resources
     const cleanupPusher = useCallback(() => {
-        console.log("Cleaning up Pusher resources");
-        
         // Clear heartbeat interval
         if (heartbeatIntervalRef.current) {
             clearInterval(heartbeatIntervalRef.current);
@@ -290,7 +307,6 @@ export const ChatWindow: React.FC = () => {
         // Clean up message channel
         if (messageChannelRef.current) {
             try {
-                console.log("Unbinding events from message channel:", messageChannelRef.current.name);
                 messageChannelRef.current.unbind_all();
                 if (pusherRef.current) {
                     pusherRef.current.unsubscribe(messageChannelRef.current.name);
@@ -304,7 +320,6 @@ export const ChatWindow: React.FC = () => {
         // Clean up presence channel
         if (presenceChannelRef.current) {
             try {
-                console.log("Unbinding events from presence channel:", presenceChannelRef.current.name);
                 presenceChannelRef.current.unbind_all();
                 if (pusherRef.current) {
                     pusherRef.current.unsubscribe(presenceChannelRef.current.name);
@@ -318,33 +333,24 @@ export const ChatWindow: React.FC = () => {
         // Disconnect Pusher instance
         if (pusherRef.current) {
             try {
-                console.log("Disconnecting Pusher");
                 pusherRef.current.disconnect();
             } catch (error) {
                 console.error("Error disconnecting Pusher:", error);
             }
             pusherRef.current = null;
         }
-        
-;
-        
     }, []);
 
     // Initialize Pusher and channels
     const setupPusher = useCallback(() => {
-        console.log("Setting up Pusher with senderId:", senderId, "and recipientId:", recipientId);
-        
         if (!senderId || !recipientId) {
-            console.warn("Cannot setup Pusher: senderId or recipientId is not defined");
             return;
         }
         
         // Clean up any existing connections first
         cleanupPusher();
         
-       
-        
-        // Create new Pusher instance with debug logging
+        // Create new Pusher instance
         pusherRef.current = new Pusher(PUSHER_KEY, {
             cluster: PUSHER_CLUSTER,
             authEndpoint: `${SERVER_URL}/pusher/auth`,
@@ -358,52 +364,33 @@ export const ChatWindow: React.FC = () => {
         
         // Add connection handlers
         pusherRef.current.connection.bind('connected', () => {
-            console.log('Connected to Pusher successfully');
-           
-            
-            // Tell server we're online once connected
-            updatePresence("join").catch(error => {
+            // Tell server we're online once connected - force this update
+            updatePresence("join", true).catch(error => {
                 console.error("Error updating presence on connection:", error);
             });
         });
         
         pusherRef.current.connection.bind('disconnected', () => {
-            console.log('Disconnected from Pusher');
-        
             setIsRecipientOnline(false);
         });
         
         pusherRef.current.connection.bind('error', () => {
-            console.error('Pusher connection error:');
-            
-            
             // Attempt to reconnect after a delay
             if (reconnectTimeoutRef.current) {
                 clearTimeout(reconnectTimeoutRef.current);
             }
             
             reconnectTimeoutRef.current = setTimeout(() => {
-                console.log("Attempting to reconnect to Pusher...");
                 setupPusher();
             }, 5000);
         });
         
         // Subscribe to message channel
         const chatChannelName = getChannelName(senderId, recipientId);
-        console.log("Subscribing to message channel:", chatChannelName);
         messageChannelRef.current = pusherRef.current.subscribe(chatChannelName);
         
         // Bind message events
-        messageChannelRef.current.bind("pusher:subscription_succeeded", () => {
-            console.log("Successfully subscribed to message channel:", chatChannelName);
-        });
-        
-        messageChannelRef.current.bind("pusher:subscription_error", () => {
-            console.error("Error subscribing to message channel:");
-        });
-        
         messageChannelRef.current.bind("new-message", (data: Message) => {
-            console.log("Received new message:", data);
             setStoredMessages((prevMessages) => {
                 // Check if the message already exists to avoid duplicates
                 if (prevMessages.some((msg) => msg.messageId === data.messageId)) {
@@ -417,64 +404,51 @@ export const ChatWindow: React.FC = () => {
         
         // Subscribe to presence channel
         const presenceChannelName = "presence-users";
-        console.log("Subscribing to presence channel:", presenceChannelName);
         presenceChannelRef.current = pusherRef.current.subscribe(presenceChannelName) as PresenceChannel;
         
         // Bind presence events
         presenceChannelRef.current.bind("pusher:subscription_succeeded", (members: PusherMembers) => {
-            console.log("Successfully subscribed to presence channel with members:", members);
-            console.log("Looking for recipient ID:", recipientId);
-            console.log("Current members:", Object.keys(members.members));
-            
             // Check if recipient is in the members list
             const isOnline = Object.keys(members.members).includes(recipientId);
-            console.log("Is recipient online?", isOnline);
             setIsRecipientOnline(isOnline);
         });
         
-        presenceChannelRef.current.bind("pusher:subscription_error", () => {
-            console.error("Error subscribing to presence channel:");
-        });
-        
         presenceChannelRef.current.bind("pusher:member_added", (member: { id: string; info?: unknown }) => {
-            console.log("Member added to presence channel:", member);
-            
             if (member.id === recipientId) {
-                console.log("Recipient came online:", recipientId);
                 setIsRecipientOnline(true);
             }
         });
         
         presenceChannelRef.current.bind("pusher:member_removed", (member: { id: string; info?: unknown }) => {
-            console.log("Member removed from presence channel:", member);
-            
             if (member.id === recipientId) {
-                console.log("Recipient went offline:", recipientId);
                 setIsRecipientOnline(false);
             }
         });
         
-        // Set up heartbeat
+        // Set up heartbeat instead of frequent presence updates
         heartbeatIntervalRef.current = setInterval(() => {
             if (pusherRef.current?.connection.state === "connected") {
-                updatePresence("join").catch(error => {
+                sendHeartbeat().catch(error => {
                     console.error("Error in heartbeat:", error);
+                });
+                
+                // Only update presence occasionally (every 2 minutes)
+                updatePresence("join").catch(error => {
+                    console.error("Error in periodic presence update:", error);
                 });
             }
         }, 30000); // Every 30 seconds
         
-    }, [cleanupPusher, recipientId, senderId, updatePresence]);
+    }, [cleanupPusher, recipientId, senderId, updatePresence, sendHeartbeat]);
 
     // Load chat history
     useEffect(() => {
         const fetchMessages = async () => {
             if (!senderId || !recipientId) {
-                console.warn("Cannot fetch messages: senderId or recipientId is not defined");
                 return;
             }
             
             try {
-                console.log("Fetching chat history for sender:", senderId, "and recipient:", recipientId);
                 const allMessages = await getChatHistory(senderId, recipientId);
                 const filteredMessages = allMessages.filter(
                     (msg) =>
@@ -483,7 +457,6 @@ export const ChatWindow: React.FC = () => {
                 );
 
                 filteredMessages.sort((a, b) => a.timestamp - b.timestamp);
-                console.log("Retrieved", filteredMessages.length, "messages");
                 setStoredMessages(filteredMessages);
             } catch (error) {
                 console.error("Error fetching messages:", error);
@@ -504,10 +477,25 @@ export const ChatWindow: React.FC = () => {
         };
     }, [recipientId, senderId, setupPusher, cleanupPusher]);
 
-    // Group messages when stored messages change
+    // Filter messages when search value changes
     useEffect(() => {
-        setGroupedMessages(groupMessagesByDate(storedMessages));
-    }, [storedMessages, groupMessagesByDate]);
+        if (!searchValue.trim()) {
+            // If no search term, use all stored messages
+            setFilteredMessages(storedMessages);
+        } else {
+            // Filter messages that contain the search term in the content or filename
+            const filtered = storedMessages.filter(msg => 
+                (msg.messageContent && msg.messageContent.toLowerCase().includes(searchValue.toLowerCase())) ||
+                (msg.fileName && msg.fileName.toLowerCase().includes(searchValue.toLowerCase()))
+            );
+            setFilteredMessages(filtered);
+        }
+    }, [searchValue, storedMessages]);
+
+    // Group messages when filtered messages change
+    useEffect(() => {
+        setGroupedMessages(groupMessagesByDate(filteredMessages));
+    }, [filteredMessages, groupMessagesByDate]);
 
     // Reset file state when recipient changes
     useEffect(() => {
@@ -515,12 +503,13 @@ export const ChatWindow: React.FC = () => {
         setUploadedFileUrl("");
         setFileName("");
         setFileType("");
+        setSearchValue("");
     }, [recipientId]);
 
-    // Handle page unload events
+    // Handle leaving page
     useEffect(() => {
         const handleBeforeUnload = () => {
-            updatePresence("leave");
+            updatePresence("leave", true);
         };
 
         window.addEventListener("beforeunload", handleBeforeUnload);
@@ -530,50 +519,66 @@ export const ChatWindow: React.FC = () => {
         };
     }, [updatePresence]);
 
-    // Explicitly check online status periodically
+    // More efficient presence check
     useEffect(() => {
+        // Function to check recipient's online status
         const checkOnlineStatus = () => {
             if (presenceChannelRef.current && recipientId) {
                 const members = presenceChannelRef.current.members;
                 if (members) {
                     const memberIds = Object.keys(members.members);
-                    console.log("Current presence members:", memberIds);
                     const isOnline = memberIds.includes(recipientId);
-                    console.log(`Recipient ${recipientId} online status:`, isOnline);
-                    setIsRecipientOnline(isOnline);
+                    
+                    // Only update and log if status changes
+                    setIsRecipientOnline(prevStatus => {
+                        if (prevStatus !== isOnline) {
+                            console.log(`Recipient ${recipientId} online status changed to:`, isOnline);
+                        }
+                        return isOnline;
+                    });
                 }
             }
         };
         
-        // Check immediately and then periodically
+        // Check immediately
         checkOnlineStatus();
-        const intervalId = setInterval(checkOnlineStatus, 10000); // Every 10 seconds
+        
+        // Check less frequently - every 30 seconds instead of 10
+        const intervalId = setInterval(checkOnlineStatus, 30000);
         
         return () => {
             clearInterval(intervalId);
         };
     }, [recipientId]);
 
-    // Scroll to bottom when new messages arrive
-    const messagesEndRef = useRef<HTMLDivElement>(null);
-    
-    
-    
+    const handleClearSearch = () => {
+        setSearchValue("");
+    };
 
     return (
         <div className="w-[100%] lg:w-[75%] flex">
             <div className="w-[100%] flex flex-col items-center relative">
                 <div className="w-[95%] sticky top-0 bg-white z-10">
-                    <Header userInfo={userInfo} actionIcons={[
-                        { id: "1", icon: <SearchIconSvg /> },
-                        { id: "2", icon: <FavoriteIconSvg width="22px" height="19px" color="#BABABA" /> },
-                        { id: "3", icon: <BellIconSvg /> },
-                    ]} />
+                    <Header 
+                        userInfo={userInfo} 
+                        actionIcons={[
+                            { id: "1", icon: <SearchIconSvg />, type: 'search' },
+                            { id: "2", icon: <FavoriteIconSvg width="22px" height="19px" color="#BABABA" />, type: 'favorite' },
+                            { id: "3", icon: <BellIconSvg />, type: 'bell' },
+                        ]}
+                        searchValue={searchValue}
+                        setSearchValue={setSearchValue}
+                        onSearchIconClick={handleClearSearch}
+                    />
                     <div className="h-[1px] w-full bg-lightGray"></div>
-                   
                 </div>
                 <div className="w-[100%] flex justify-center overflow-y-scroll custom-scrollbar">
                     <div className="w-[95%] flex flex-col items-center h-[80vh]">
+                        {searchValue.trim() !== "" && filteredMessages.length === 0 && (
+                            <div className="flex flex-col items-center justify-center h-full w-full">
+                                <p className="text-gray-500 text-lg">No messages found for "{searchValue}"</p>
+                            </div>
+                        )}
                         {groupedMessages.map((group) => (
                             <div key={group.timestamp} className="w-full">
                                 {group.date && (
@@ -586,17 +591,17 @@ export const ChatWindow: React.FC = () => {
                                     </div>
                                 )}
                                 {group.messages.map((msg) => (
-                                    <ChatMessage
+                                    <MessageBubble
                                         key={msg.messageId}
                                         senderId={msg.senderId}
                                         messageContent={msg.messageContent}
                                         fileUrl={msg.fileUrl}
                                         fileName={msg.fileName}
+                                        messageId={msg.messageId}
                                     />
                                 ))}
                             </div>
                         ))}
-                        <div ref={messagesEndRef} />
                     </div>
                 </div>
                 {localFileUrl && (

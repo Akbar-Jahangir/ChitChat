@@ -1,4 +1,4 @@
-import React, { useContext, useMemo, useState, useCallback, useEffect } from "react";
+import React, { useContext, useMemo, useState, useCallback, useEffect, useRef } from "react";
 import { TikMarkIconSvg } from "../Svgs";
 import { ChatUserProps } from "../../interfaces/chatUser.interface";
 import useDatabase from "../../hooks/useDatabase";
@@ -14,20 +14,38 @@ export const ChatItem: React.FC<ChatItemProps> = React.memo(({ searchValue }) =>
   const { storedUsers, getAllMessages } = useDatabase();
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
-  // State to track which chats have been read (clicked on)
-
+  
   // Track the last seen message timestamp for each chat
   const [lastSeenTimestamps, setLastSeenTimestamps] = useState<Record<string, number>>({});
   
   const { setRecipientname, setRecipientId, setRecipientPicUrl } = useContext(RecipientContext);
   const { senderId } = useContext(SenderContext);
 
+  // Prevent getAllMessages from causing re-renders
+  const getAllMessagesRef = useRef(getAllMessages);
+  useEffect(() => {
+    getAllMessagesRef.current = getAllMessages;
+  }, [getAllMessages]);
+
   const memoizedUsers = useMemo(() => storedUsers, [storedUsers]);
 
+  // Load last seen timestamps from localStorage once on mount
+  useEffect(() => {
+    try {
+      const savedTimestamps = localStorage.getItem(`lastSeenTimestamps_${senderId}`);
+      if (savedTimestamps) {
+        setLastSeenTimestamps(JSON.parse(savedTimestamps));
+      }
+    } catch (error) {
+      console.error("Error loading last seen timestamps:", error);
+    }
+  }, [senderId]);
+
+  // Separate useEffect for fetching messages
   useEffect(() => {
     const fetchMessages = async () => {
       try {
-        const response = await getAllMessages();
+        const response = await getAllMessagesRef.current();
         setMessages(response);
       } catch (error) {
         console.error("Error fetching messages:", error);
@@ -39,18 +57,8 @@ export const ChatItem: React.FC<ChatItemProps> = React.memo(({ searchValue }) =>
     // Set up an interval to poll for new messages
     const intervalId = setInterval(fetchMessages, 5000); // Poll every 5 seconds
     
-    // Load last seen timestamps from localStorage
-    try {
-      const savedTimestamps = localStorage.getItem(`lastSeenTimestamps_${senderId}`);
-      if (savedTimestamps) {
-        setLastSeenTimestamps(JSON.parse(savedTimestamps));
-      }
-    } catch (error) {
-      console.error("Error loading last seen timestamps:", error);
-    }
-    
     return () => clearInterval(intervalId);
-  }, [getAllMessages, senderId]);
+  }, [senderId]); // Only depend on senderId
 
   const handleClick = useCallback(
     (userId: string, username: string, profilePicUrl: string) => {
@@ -59,12 +67,21 @@ export const ChatItem: React.FC<ChatItemProps> = React.memo(({ searchValue }) =>
       setRecipientPicUrl(profilePicUrl);
       setActiveChatId(userId);
       
-      // Update the last seen timestamp for this chat
-      const lastMessage = getLastMessage(userId);
-      if (lastMessage) {
+      // Get all messages for this conversation
+      const userMessages = messages.filter(
+        (msg) =>
+          (msg.senderId === userId && msg.recipientId === senderId) ||
+          (msg.senderId === senderId && msg.recipientId === userId)
+      );
+      
+      // Find the latest message timestamp
+      if (userMessages.length > 0) {
+        const latestTimestamp = Math.max(...userMessages.map(msg => msg.timestamp));
+        
+        // Update the last seen timestamp for this chat
         const newTimestamps = {
           ...lastSeenTimestamps,
-          [userId]: lastMessage.timestamp
+          [userId]: latestTimestamp
         };
         setLastSeenTimestamps(newTimestamps);
         
@@ -72,7 +89,7 @@ export const ChatItem: React.FC<ChatItemProps> = React.memo(({ searchValue }) =>
         localStorage.setItem(`lastSeenTimestamps_${senderId}`, JSON.stringify(newTimestamps));
       }
     },
-    [setRecipientname, setRecipientId, setRecipientPicUrl, lastSeenTimestamps, senderId]
+    [setRecipientname, setRecipientId, setRecipientPicUrl, lastSeenTimestamps, senderId, messages]
   );
 
   const formatTimestamp = (timestamp: number): string => {
@@ -131,6 +148,30 @@ export const ChatItem: React.FC<ChatItemProps> = React.memo(({ searchValue }) =>
     ).length;
   }, [activeChatId, lastSeenTimestamps, messages, senderId]);
 
+  // Function to format preview text for messages with files
+  const getMessagePreview = useCallback((message: Message | null): string => {
+    if (!message) return "";
+    
+    // Check if message has a file
+    if (message.fileUrl) {
+      const fileText = message.messageContent ? message.messageContent + " · " : "";
+      
+      // Show file name if available, otherwise show file type
+      if (message.fileName) {
+        return fileText + message.fileName;
+      } else if (message.fileType) {
+        // Extract file type (e.g., "image/jpeg" -> "Image")
+        const fileType = message.fileType.split('/')[0];
+        return fileText + fileType.charAt(0).toUpperCase() + fileType.slice(1);
+      } else {
+        return fileText + "File";
+      }
+    }
+    
+    // Return message content if no file
+    return message.messageContent || "";
+  }, []);
+
   const filteredUsers = useMemo(() => {
     const filtered = memoizedUsers.filter((user) =>
       user.username.toLowerCase().includes(searchValue.toLowerCase())
@@ -159,6 +200,8 @@ export const ChatItem: React.FC<ChatItemProps> = React.memo(({ searchValue }) =>
         const lastMessage = getLastMessage(user.userId);
         // Get unread messages count using our new function
         const unreadMessagesCount = getUnreadMessagesCount(user.userId);
+        // Get formatted message preview (text + file info)
+        const messagePreview = getMessagePreview(lastMessage);
 
         return (
           <div
@@ -184,7 +227,7 @@ export const ChatItem: React.FC<ChatItemProps> = React.memo(({ searchValue }) =>
 
                 <div className="flex justify-between w-full">
                   <p className="text-gray text-xs max-w-[142px] line-clamp-2">
-                    {lastMessage && lastMessage.messageContent}
+                    {messagePreview}
                   </p>
                   <div className="text-lightSlate text-xs">
                     {lastMessage && lastMessage.senderId === senderId ? (
