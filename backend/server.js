@@ -8,9 +8,27 @@ dotenv.config();
 const app = express();
 const PORT = process.env.PORT || 8000;
 
-// Configure CORS
+// Configure CORS properly for all environments
 app.use(cors({
-  origin: process.env.CLIENT_URL || "https://chit-chat-pink.vercel.app"
+  origin: function(origin, callback) {
+    // Allow requests from any origin in development
+    const allowedOrigins = [
+      process.env.CLIENT_URL || "https://chit-chat-pink.vercel.app",
+      "http://localhost:3000"  // Add your local development URL
+    ];
+    
+    // Check if the request origin is in our allowed origins list
+    // or allow requests with no origin (like mobile apps or curl)
+    if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+      callback(null, true);
+    } else {
+      console.warn(`Origin ${origin} not allowed by CORS`);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,  // Important for cookies/auth
+  methods: "GET,HEAD,PUT,PATCH,POST,DELETE",
+  allowedHeaders: ["Content-Type", "Authorization"]
 }));
 
 // Add body parser middleware
@@ -29,6 +47,12 @@ const pusher = new Pusher({
 // Track online users (in-memory store)
 // In production, you'd use Redis or another distributed cache
 const onlineUsers = new Set();
+
+// Add request logging middleware
+app.use((req, res, next) => {
+  console.log(`${req.method} ${req.url}`);
+  next();
+});
 
 // Health check endpoint
 app.get("/health-check", (req, res) => {
@@ -68,12 +92,16 @@ app.post("/pusher/auth", (req, res) => {
 
   console.log("Auth request for:", { socketId, channel, userId });
 
+  if (!socketId || !channel) {
+    return res.status(400).json({ error: "Missing socket_id or channel_name" });
+  }
+
   // Authenticate presence channels
   if (channel.startsWith('presence-')) {
     const presenceData = {
-      user_id: userId,
+      user_id: userId || 'anonymous', // Fallback for missing user_id
       user_info: {
-        name: userId
+        name: userId || 'anonymous'
       }
     };
 
@@ -83,12 +111,18 @@ app.post("/pusher/auth", (req, res) => {
       res.send(auth);
     } catch (error) {
       console.error("Presence auth error:", error);
-      res.status(500).json({ error: "Failed to authenticate" });
+      res.status(500).json({ error: "Failed to authenticate", details: error.message });
     }
   } else {
-    // For non-presence channels
-    console.log("Auth not required for regular channel");
-    res.status(200).json({ success: true });
+    // For non-presence channels, just authorize the connection
+    try {
+      const auth = pusher.authorizeChannel(socketId, channel);
+      console.log("Auth successful for regular channel");
+      res.send(auth);
+    } catch (error) {
+      console.error("Regular auth error:", error);
+      res.status(500).json({ error: "Failed to authenticate", details: error.message });
+    }
   }
 });
 
@@ -105,7 +139,7 @@ app.post("/join-presence", async (req, res) => {
     onlineUsers.add(userId);
     
     // Trigger an event to the shared presence channel about the new user
-    await pusher.trigger("presence-users", "pusher:member_added", {
+    await pusher.trigger("presence-users", "user-online", {
       id: userId,
       info: { name: userId }
     });
@@ -118,13 +152,14 @@ app.post("/join-presence", async (req, res) => {
     });
   } catch (error) {
     console.error("Join presence error:", error);
-    res.status(500).json({ error: "Failed to update presence status" });
+    res.status(500).json({ error: "Failed to update presence status", details: error.message });
   }
 });
 
 // User leaving presence channel
 app.post("/leave-presence", async (req, res) => {
-  const { userId } = req.body;
+  // Support both JSON and URL-encoded form data (for sendBeacon)
+  const userId = req.body.userId;
   
   if (!userId) {
     return res.status(400).json({ error: "User ID is required" });
@@ -135,7 +170,7 @@ app.post("/leave-presence", async (req, res) => {
     onlineUsers.delete(userId);
     
     // Trigger an event to the shared presence channel about the user leaving
-    await pusher.trigger("presence-users", "pusher:member_removed", {
+    await pusher.trigger("presence-users", "user-offline", {
       id: userId
     });
     
@@ -147,7 +182,7 @@ app.post("/leave-presence", async (req, res) => {
     });
   } catch (error) {
     console.error("Leave presence error:", error);
-    res.status(500).json({ error: "Failed to update presence status" });
+    res.status(500).json({ error: "Failed to update presence status", details: error.message });
   }
 });
 
@@ -157,6 +192,12 @@ app.get("/online-users", (req, res) => {
     onlineCount: onlineUsers.size,
     onlineUsers: Array.from(onlineUsers)
   });
+});
+
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error("Server error:", err);
+  res.status(500).json({ error: "Internal server error", message: err.message });
 });
 
 // Start the server

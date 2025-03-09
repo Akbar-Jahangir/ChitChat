@@ -28,6 +28,17 @@ interface MessageGroup {
     timestamp: number; // Used for sorting
 }
 
+// Define a type for Pusher members
+interface PusherMembers {
+    count: number;
+    members: Record<string, unknown>;
+    myID: string;
+    me: {
+        id: string;
+        info: unknown;
+    };
+}
+
 // Define Pusher keys and server URL
 const PUSHER_KEY = "33466c91963fd345d327";
 const PUSHER_CLUSTER = "ap2";
@@ -315,21 +326,21 @@ export const ChatWindow: React.FC = () => {
         const presenceChannel = presencePusher.subscribe(presenceChannelName);
 
         // Set online status when subscription succeeds
-        presenceChannel.bind("pusher:subscription_succeeded", (members: any) => {
+        presenceChannel.bind("pusher:subscription_succeeded", (members: PusherMembers) => {
             // Check if recipient is in the members list
             const isOnline = members.members && members.members[recipientId] !== undefined;
             setIsRecipientOnline(isOnline);
         });
 
         // When someone comes online
-        presenceChannel.bind("pusher:member_added", (member: any) => {
+        presenceChannel.bind("pusher:member_added", (member: { id: string; info?: unknown }) => {
             if (member.id === recipientId) {
                 setIsRecipientOnline(true);
             }
         });
 
         // When someone goes offline
-        presenceChannel.bind("pusher:member_removed", (member: any) => {
+        presenceChannel.bind("pusher:member_removed", (member: { id: string; info?: unknown }) => {
             if (member.id === recipientId) {
                 setIsRecipientOnline(false);
             }
