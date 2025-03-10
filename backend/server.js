@@ -12,7 +12,7 @@ app.use(cors({
   origin: function(origin, callback) {
     
     const allowedOrigins = [
-      process.env.CLIENT_URL || "https://chit-chat-delta-blue.vercel.app",
+      process.env.CLIENT_URL || "https://chit-chat-nine-xi.vercel.app",
       "http://localhost:3000",
       "http://localhost:5173"  
     ];

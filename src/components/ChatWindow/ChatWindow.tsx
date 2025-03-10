@@ -21,28 +21,10 @@ import { MessageBubble } from "../MessageBubble";
 import { Textarea } from "../Textarea/Textarea";
 import { ref, uploadBytes, getDownloadURL, storage } from "../../utils/firebaseConfig";
 import FilePreview from "../FilePreview/FilePreview";
+import { ChatWindowProps } from "./chatWindow.interface";
+import { MessageGroup } from "./messageGroup.interface";
+import { PusherMembers } from "./pusherMember.interface";
 
-// Define an interface for grouped messages
-interface MessageGroup {
-    date: string;
-    messages: Message[];
-    timestamp: number; // Used for sorting
-}
-
-// Define a type for Pusher members
-interface PusherMembers {
-    count: number;
-    members: Record<string, unknown>;
-    myID: string;
-    me: {
-        id: string;
-        info: unknown;
-    };
-}
-interface ChatWindowProps {
-    toggleRightSidebar: () => void;
-    rightSidebarVisible: boolean;
-}
 
 // Define Pusher keys and server URL
 const PUSHER_KEY = "33466c91963fd345d327";
@@ -187,9 +169,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ toggleRightSidebar, righ
 
     const handleSubmit = useCallback(async (e: React.FormEvent) => {
         e.preventDefault();
-        console.log("jjjj");
         
-
         if (!outgoingMessage.trim() && !uploadedFileUrl) return;
 
         const messageData: Message = {
