@@ -22,11 +22,12 @@ import { MediaDisplay } from "../MediaDisplay/MediaDisplay";
 import { Message } from "../../interfaces/message.interface";
 
 
-export const Sidebar: React.FC<SidebarProps> = ({ alignment = null }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ alignment = null, }) => {
   const [searchValue, setSearchValue] = useState("");
   const [mediaItems, setMediaItems] = useState<Message[]>([]);
   const [selectedMediaType, setSelectedMediaType] = useState<string | null>(null);
   const [filteredMediaItems, setFilteredMediaItems] = useState<Message[]>([]);
+  const [isRightSidebar,setIsRightSidebar]=useState<boolean>(true)
 
   const { sendername, senderId, senderPicUrl } = useContext(SenderContext);
   const { recipientId, recipientname, recipientPicUrl } = useContext(RecipientContext);
@@ -58,7 +59,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ alignment = null }) => {
         );
         filteredMessages.sort((a, b) => a.timestamp - b.timestamp);
 
-        // Extract media items from messages
         const extractedMediaItems: Message[] = [];
         
         filteredMessages.forEach(msg => {
@@ -95,7 +95,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ alignment = null }) => {
           }
         });
 
-       
         setMediaItems(extractedMediaItems);
       } catch (error) {
         console.error("Error fetching chat history:", error);
@@ -105,7 +104,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ alignment = null }) => {
     if (recipientId) {
       fetchMessages();
     }
-  }, [recipientId, senderId, getChatHistory]);
+  }, [recipientId, senderId]);
 
   // Helper function to determine file type from file name if not explicitly provided
   const getFileTypeFromName = (fileName: string): string => {
@@ -144,10 +143,19 @@ export const Sidebar: React.FC<SidebarProps> = ({ alignment = null }) => {
     setSelectedMediaType("ALL");
   };
 
+  useEffect(()=>{
+setIsRightSidebar(true)
+  },[])
+  useEffect(() => {
+    console.log('isRightSidebar updated:', isRightSidebar);  // Log state change
+  }, [isRightSidebar]);
+  console.log("i m mounting");
+  
+
   return (
-    <div className="w-full lg:w-1/4 xl:w-[25%] flex flex-col items-center bg-smokeWhite space-y-3.5 h-screen p-4 overflow-hidden z-50">
+    <>
       {alignment === "left" ? (
-        <>
+        <div className="w-full lg:w-[25%] flex flex-col items-center bg-smokeWhite space-y-3.5 h-screen p-4 overflow-hidden absolute  lg:static z-50">
           <div className="w-full flex flex-col items-center space-y-3.5">
             <Header userInfo={userInfo} actionIcons={[{ id: "1", icon: <EditIconSvg /> }]} />
             <Searchbar searchValue={searchValue} setSearchValue={setSearchValue} />
@@ -156,8 +164,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ alignment = null }) => {
           <div className="custom-scrollbar w-full flex flex-col items-center space-y-3.5 overflow-y-auto">
             <ChatItem searchValue={searchValue} />
           </div>
-        </>
-      ) : (
+        </div>
+      ) :
+      isRightSidebar &&
+      (
+        <div className="w-full lg:w-[25%] flex flex-col items-center bg-smokeWhite space-y-3.5 h-screen p-4 overflow-hidden absolute  lg:static z-50">
         <div className="flex flex-col items-center space-y-4 md:space-y-6 h-screen w-full">
           <div className="w-full mt-4 md:mt-6">
             <Searchbar />
@@ -172,7 +183,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ alignment = null }) => {
           </div>
           <div className="space-y-4 md:space-y-6 flex flex-col items-center overflow-y-scroll custom-scrollbar h-[70vh] pb-10">
             <div className="flex gap-x-3">
-              <Button type="button" btnText="Chat" icon={<ChatIconSvg />} className="text-xs" iconClass="chatting-btn" />
+              <Button type="button" btnText="Chat" icon={<ChatIconSvg />} className="text-xs" iconClass="chatting-btn" onClick={()=>setIsRightSidebar(false)} />
               <span className="h-[99px] border border-slate"></span>
               <Button type="button" btnText="Video Call" icon={<VideoChatIconSvg />} className=" text-xs" iconClass="chatting-btn" />
             </div>
@@ -217,8 +228,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ alignment = null }) => {
             )}
           </div>
         </div>
+        </div>
       )}
-    </div>
+    
+      </>
   );
 };
 

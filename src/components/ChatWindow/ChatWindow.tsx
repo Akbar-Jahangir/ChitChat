@@ -10,6 +10,7 @@ import {
     SearchIconSvg,
     SendMessageIconSvg,
     VoiceIconSvg,
+   ArrowIconSvg,
 } from "../Svgs";
 import { Header } from "../Header";
 import { SenderContext, RecipientContext } from "../../contexts/ChatContext";
@@ -38,6 +39,10 @@ interface PusherMembers {
         info: unknown;
     };
 }
+interface ChatWindowProps {
+    toggleRightSidebar: () => void;
+    rightSidebarVisible: boolean;
+}
 
 // Define Pusher keys and server URL
 const PUSHER_KEY = "33466c91963fd345d327";
@@ -45,7 +50,7 @@ const PUSHER_CLUSTER = "ap2";
 // Make sure this points to your Vercel backend URL
 const SERVER_URL = "https://chit-chat.koyeb.app";
 
-export const ChatWindow: React.FC = () => {
+export const ChatWindow: React.FC<ChatWindowProps> = ({ toggleRightSidebar, rightSidebarVisible }) => {
     const [outgoingMessage, setOutgoingMessage] = useState<string>("");
     const [storedMessages, setStoredMessages] = useState<Message[]>([]);
     const [groupedMessages, setGroupedMessages] = useState<MessageGroup[]>([]);
@@ -56,7 +61,7 @@ export const ChatWindow: React.FC = () => {
     const [isRecipientOnline, setIsRecipientOnline] = useState<boolean>(false);
     const [searchValue, setSearchValue] = useState<string>("");
     const [filteredMessages, setFilteredMessages] = useState<Message[]>([]);
-   
+
     // Refs to track connection states
     const pusherRef = useRef<Pusher | null>(null);
     const messageChannelRef = useRef<Channel | null>(null);
@@ -80,6 +85,16 @@ export const ChatWindow: React.FC = () => {
         username: recipientname,
         isOnline: isRecipientOnline
     };
+
+    // Create the arrow icon for sidebar toggle
+    const SidebarToggleIcon = () => (
+        <div 
+            onClick={toggleRightSidebar}
+            className={`cursor-pointer transition-transform duration-300 ${rightSidebarVisible ? 'rotate-180' : ''}`}
+        >
+            < ArrowIconSvg />
+        </div>
+    );
 
     const messageTypeBtnData = [
         { id: 1, icon: <AttachmentIconSvg />, accept: "image/*,video/*,.mp3,.pdf,.docx,.xlsx,.ppt,.pptx,.ppsx" },
@@ -147,22 +162,22 @@ export const ChatWindow: React.FC = () => {
         try {
             const response = await fetch(`${SERVER_URL}/send-message`, {
                 method: "POST",
-                headers: { 
-                    "Content-Type": "application/json" 
+                headers: {
+                    "Content-Type": "application/json"
                 },
                 body: JSON.stringify({
                     messageData,
                     channel: getChannelName(messageData.senderId, messageData.recipientId),
                 }),
             });
-    
+
             if (!response.ok) {
                 const errorText = await response.text();
                 console.error("Failed to send message. Server response:", errorText);
                 return false;
             }
-    
-           
+
+
             return true;
         } catch (error) {
             console.error("Error sending message:", error);
@@ -172,6 +187,8 @@ export const ChatWindow: React.FC = () => {
 
     const handleSubmit = useCallback(async (e: React.FormEvent) => {
         e.preventDefault();
+        console.log("jjjj");
+        
 
         if (!outgoingMessage.trim() && !uploadedFileUrl) return;
 
@@ -188,10 +205,7 @@ export const ChatWindow: React.FC = () => {
 
         const sent = await sendMessageToServer(messageData);
         if (sent) {
-            // Don't update storedMessages here, let the Pusher event handle it
-            // This prevents duplicate messages
             saveMessage(messageData);
-
             setOutgoingMessage("");
             setUploadedFileUrl("");
             setLocalFileUrl("");
@@ -213,14 +227,14 @@ export const ChatWindow: React.FC = () => {
 
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
-    
+
         if (!file) return;
-    
+
         const url = URL.createObjectURL(file);
         setLocalFileUrl(url);
         setFileName(file.name);
         setFileType(file.type);
-    
+
         try {
             const fileUrl = await uploadFile(file);
             setUploadedFileUrl(fileUrl);
@@ -231,7 +245,7 @@ export const ChatWindow: React.FC = () => {
             setFileName("");
             setFileType("");
         }
-    
+
         e.target.value = "";
     };
 
@@ -245,24 +259,24 @@ export const ChatWindow: React.FC = () => {
         if (!senderId) {
             return;
         }
-        
+
         const now = Date.now();
         // Only update presence if forced or if it's been more than 2 minutes since the last update
         // This prevents unnecessary API calls
         if (!force && action === "join" && (now - lastPresenceUpdateRef.current < 120000)) {
             return;
         }
-        
+
         lastPresenceUpdateRef.current = now;
         const endpoint = action === "join" ? "join-presence" : "leave-presence";
-        
+
         try {
             const response = await fetch(`${SERVER_URL}/${endpoint}`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ userId: senderId }),
             });
-            
+
             if (!response.ok) {
                 const errorText = await response.text();
                 console.error(`Failed to ${action} presence. Server response:`, errorText);
@@ -278,7 +292,7 @@ export const ChatWindow: React.FC = () => {
         if (!senderId || pusherRef.current?.connection.state !== "connected") {
             return;
         }
-        
+
         try {
             await fetch(`${SERVER_URL}/heartbeat`, {
                 method: "POST",
@@ -297,13 +311,13 @@ export const ChatWindow: React.FC = () => {
             clearInterval(heartbeatIntervalRef.current);
             heartbeatIntervalRef.current = null;
         }
-        
+
         // Clear reconnect timeout
         if (reconnectTimeoutRef.current) {
             clearTimeout(reconnectTimeoutRef.current);
             reconnectTimeoutRef.current = null;
         }
-        
+
         // Clean up message channel
         if (messageChannelRef.current) {
             try {
@@ -316,7 +330,7 @@ export const ChatWindow: React.FC = () => {
             }
             messageChannelRef.current = null;
         }
-        
+
         // Clean up presence channel
         if (presenceChannelRef.current) {
             try {
@@ -329,7 +343,7 @@ export const ChatWindow: React.FC = () => {
             }
             presenceChannelRef.current = null;
         }
-        
+
         // Disconnect Pusher instance
         if (pusherRef.current) {
             try {
@@ -346,10 +360,10 @@ export const ChatWindow: React.FC = () => {
         if (!senderId || !recipientId) {
             return;
         }
-        
+
         // Clean up any existing connections first
         cleanupPusher();
-        
+
         // Create new Pusher instance
         pusherRef.current = new Pusher(PUSHER_KEY, {
             cluster: PUSHER_CLUSTER,
@@ -361,7 +375,7 @@ export const ChatWindow: React.FC = () => {
             },
             enabledTransports: ["ws", "wss"],
         });
-        
+
         // Add connection handlers
         pusherRef.current.connection.bind('connected', () => {
             // Tell server we're online once connected - force this update
@@ -369,26 +383,26 @@ export const ChatWindow: React.FC = () => {
                 console.error("Error updating presence on connection:", error);
             });
         });
-        
+
         pusherRef.current.connection.bind('disconnected', () => {
             setIsRecipientOnline(false);
         });
-        
+
         pusherRef.current.connection.bind('error', () => {
             // Attempt to reconnect after a delay
             if (reconnectTimeoutRef.current) {
                 clearTimeout(reconnectTimeoutRef.current);
             }
-            
+
             reconnectTimeoutRef.current = setTimeout(() => {
                 setupPusher();
             }, 5000);
         });
-        
+
         // Subscribe to message channel
         const chatChannelName = getChannelName(senderId, recipientId);
         messageChannelRef.current = pusherRef.current.subscribe(chatChannelName);
-        
+
         // Bind message events
         messageChannelRef.current.bind("new-message", (data: Message) => {
             setStoredMessages((prevMessages) => {
@@ -396,49 +410,49 @@ export const ChatWindow: React.FC = () => {
                 if (prevMessages.some((msg) => msg.messageId === data.messageId)) {
                     return prevMessages;
                 }
-                
+
                 // Add the new message and sort
                 return [...prevMessages, data].sort((a, b) => a.timestamp - b.timestamp);
             });
         });
-        
+
         // Subscribe to presence channel
         const presenceChannelName = "presence-users";
         presenceChannelRef.current = pusherRef.current.subscribe(presenceChannelName) as PresenceChannel;
-        
+
         // Bind presence events
         presenceChannelRef.current.bind("pusher:subscription_succeeded", (members: PusherMembers) => {
             // Check if recipient is in the members list
             const isOnline = Object.keys(members.members).includes(recipientId);
             setIsRecipientOnline(isOnline);
         });
-        
+
         presenceChannelRef.current.bind("pusher:member_added", (member: { id: string; info?: unknown }) => {
             if (member.id === recipientId) {
                 setIsRecipientOnline(true);
             }
         });
-        
+
         presenceChannelRef.current.bind("pusher:member_removed", (member: { id: string; info?: unknown }) => {
             if (member.id === recipientId) {
                 setIsRecipientOnline(false);
             }
         });
-        
+
         // Set up heartbeat instead of frequent presence updates
         heartbeatIntervalRef.current = setInterval(() => {
             if (pusherRef.current?.connection.state === "connected") {
                 sendHeartbeat().catch(error => {
                     console.error("Error in heartbeat:", error);
                 });
-                
+
                 // Only update presence occasionally (every 2 minutes)
                 updatePresence("join").catch(error => {
                     console.error("Error in periodic presence update:", error);
                 });
             }
         }, 30000); // Every 30 seconds
-        
+
     }, [cleanupPusher, recipientId, senderId, updatePresence, sendHeartbeat]);
 
     // Load chat history
@@ -447,7 +461,7 @@ export const ChatWindow: React.FC = () => {
             if (!senderId || !recipientId) {
                 return;
             }
-            
+
             try {
                 const allMessages = await getChatHistory(senderId, recipientId);
                 const filteredMessages = allMessages.filter(
@@ -466,12 +480,12 @@ export const ChatWindow: React.FC = () => {
         fetchMessages();
     }, [recipientId, senderId, getChatHistory]);
 
-    // Setup Pusher connections when user/recipient changes
+  
     useEffect(() => {
         if (senderId && recipientId) {
             setupPusher();
         }
-        
+
         return () => {
             cleanupPusher();
         };
@@ -484,7 +498,7 @@ export const ChatWindow: React.FC = () => {
             setFilteredMessages(storedMessages);
         } else {
             // Filter messages that contain the search term in the content or filename
-            const filtered = storedMessages.filter(msg => 
+            const filtered = storedMessages.filter(msg =>
                 (msg.messageContent && msg.messageContent.toLowerCase().includes(searchValue.toLowerCase())) ||
                 (msg.fileName && msg.fileName.toLowerCase().includes(searchValue.toLowerCase()))
             );
@@ -492,34 +506,25 @@ export const ChatWindow: React.FC = () => {
         }
     }, [searchValue, storedMessages]);
 
-    // Group messages when filtered messages change
+
     useEffect(() => {
         setGroupedMessages(groupMessagesByDate(filteredMessages));
     }, [filteredMessages, groupMessagesByDate]);
 
-    // Reset file state when recipient changes
-    useEffect(() => {
-        setLocalFileUrl("");
-        setUploadedFileUrl("");
-        setFileName("");
-        setFileType("");
-        setSearchValue("");
-    }, [recipientId]);
-
-    // Handle leaving page
+  
     useEffect(() => {
         const handleBeforeUnload = () => {
             updatePresence("leave", true);
         };
 
         window.addEventListener("beforeunload", handleBeforeUnload);
-        
+
         return () => {
             window.removeEventListener("beforeunload", handleBeforeUnload);
         };
     }, [updatePresence]);
 
-    // More efficient presence check
+  
     useEffect(() => {
         // Function to check recipient's online status
         const checkOnlineStatus = () => {
@@ -528,7 +533,7 @@ export const ChatWindow: React.FC = () => {
                 if (members) {
                     const memberIds = Object.keys(members.members);
                     const isOnline = memberIds.includes(recipientId);
-                    
+
                     // Only update and log if status changes
                     setIsRecipientOnline(prevStatus => {
                         if (prevStatus !== isOnline) {
@@ -539,13 +544,10 @@ export const ChatWindow: React.FC = () => {
                 }
             }
         };
-        
+
         // Check immediately
         checkOnlineStatus();
-        
-        // Check less frequently - every 30 seconds instead of 10
         const intervalId = setInterval(checkOnlineStatus, 30000);
-        
         return () => {
             clearInterval(intervalId);
         };
@@ -556,15 +558,16 @@ export const ChatWindow: React.FC = () => {
     };
 
     return (
-        <div className="w-[100%] lg:w-[75%] flex">
-            <div className="w-[100%] flex flex-col items-center relative">
+        <div className={`w-full lg:w-auto flex-grow transition-all duration-300 bg-white h-screen`}>
+            <div className="w-[100%] flex flex-col items-center relative h-full">
                 <div className="w-[95%] sticky top-0 bg-white z-10">
-                    <Header 
-                        userInfo={userInfo} 
+                    <Header
+                        userInfo={userInfo}
                         actionIcons={[
                             { id: "1", icon: <SearchIconSvg />, type: 'search' },
                             { id: "2", icon: <FavoriteIconSvg width="22px" height="19px" color="#BABABA" />, type: 'favorite' },
                             { id: "3", icon: <BellIconSvg />, type: 'bell' },
+                            { id: "4", icon: <SidebarToggleIcon />, type: 'toggle' },
                         ]}
                         searchValue={searchValue}
                         setSearchValue={setSearchValue}
@@ -572,10 +575,10 @@ export const ChatWindow: React.FC = () => {
                     />
                     <div className="h-[1px] w-full bg-lightGray"></div>
                 </div>
-                <div className="w-[100%] flex justify-center overflow-y-scroll custom-scrollbar">
-                    <div className="w-[95%] flex flex-col items-center h-[80vh]">
+                <div className="w-[100%] flex justify-center overflow-y-scroll custom-scrollbar h-full mb-16">
+                    <div className="w-[95%] flex flex-col items-center h-full">
                         {searchValue.trim() !== "" && filteredMessages.length === 0 && (
-                            <div className="flex flex-col items-center justify-center h-full w-full">
+                            <div className="flex flex-col items-center justify-center h-screen w-full text-gray">
                                 <p className="text-gray-500 text-lg">No messages found for "{searchValue}"</p>
                             </div>
                         )}
@@ -621,7 +624,7 @@ export const ChatWindow: React.FC = () => {
                                 onKeyDown={(e) => {
                                     if (e.key === "Enter" && !e.shiftKey) {
                                         e.preventDefault();
-                                        handleSubmit(e); 
+                                        handleSubmit(e);
                                     }
                                 }}
                                 className="w-[90%] px-2 mb-2"

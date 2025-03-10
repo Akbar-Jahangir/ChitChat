@@ -52,7 +52,6 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ message
 
     return (
         <>
-            {/* Chat Message */}
             <div className={`w-[100%] flex ${senderId === currentUserId ? "justify-end" : "justify-start"} my-4`}>
                 <div>
                     {senderId === currentUserId ? (
@@ -65,7 +64,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ message
                                             <img
                                                 src={fileUrl}
                                                 alt="Uploaded"
-                                                className={`rounded-lg max-w-[200px] ${messageContent ? "mb-2" : ""} cursor-pointer`}
+                                                className={`rounded max-w-[200px] border p-1 ${messageContent ? "mb-2" : ""} cursor-pointer`}
                                                 onClick={() => setSelectedImage(fileUrl)}
                                             />
                                         ) : isVideo(fileName!) ? (
@@ -172,7 +171,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ message
                                             <img
                                                 src={fileUrl}
                                                 alt="Uploaded"
-                                                className={`rounded-lg max-w-[200px] ${messageContent ? "mb-2" : ""} cursor-pointer`}
+                                                className={`rounded-lg max-w-[200px] border p-1 ${messageContent ? "mb-2" : ""} cursor-pointer`}
                                                 onClick={() => setSelectedImage(fileUrl)}
                                             />
                                         ) : isVideo(fileName!) ? (
@@ -271,7 +270,6 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ message
                 </div>
             </div>
 
-            {/* Image preview modal - kept exactly the same as original */}
             {selectedImage && (
                 <div
                     className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50"
@@ -285,7 +283,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ message
                         />
                         <button
                             className="absolute top-4 right-4 bg-white text-black px-3 py-1 rounded-full text-lg font-bold"
-                            onClick={() => setSelectedImage(null)} 
+                            onClick={() => setSelectedImage(null)}
                         >
                             ✕
                         </button>
