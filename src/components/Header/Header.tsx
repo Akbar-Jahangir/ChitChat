@@ -29,9 +29,6 @@ export const Header: React.FC<HeaderProps> = ({
     } else if (iconType === 'edit' && userInfo.userId) {
       navigate(`/editProfile`);
     }
-    // } else if (icon.onClick) {
-    //   icon.onClick();
-    // }
   };
   
   return (

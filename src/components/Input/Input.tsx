@@ -1,16 +1,18 @@
+import { forwardRef } from "react";
 import { InputProps } from "./input.interface";
 
-export const Input: React.FC<InputProps> = ({
-  placeholder = "Name",
+export const Input = forwardRef<HTMLInputElement, InputProps>(({
+  placeholder,
   type = "text",
   onChange,
   className,
   value,
   accept,
   disabled=false
-}) => {
+}, ref) => {
   return (
     <input
+    ref={ref}
       className={className}
       placeholder={placeholder}
       type={type}
@@ -20,4 +22,4 @@ export const Input: React.FC<InputProps> = ({
       disabled={disabled}
     />
   );
-};
+})

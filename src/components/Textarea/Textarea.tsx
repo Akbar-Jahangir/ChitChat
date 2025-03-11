@@ -29,7 +29,7 @@ export const Textarea: React.FC<TextareaProps> = ({
             onChange={onChange}
             onKeyDown={onKeyDown}
             rows={1}
-            style={{scrollbarWidth: "none" }}
+            style={{ scrollbarWidth: "none" }}
         />
     );
 };

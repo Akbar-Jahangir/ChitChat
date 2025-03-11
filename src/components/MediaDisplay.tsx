@@ -1,10 +1,10 @@
-import { Message } from "../../interfaces/message.interface";
+import { Message } from "../interfaces/message.interface";
 import {
     ImageIconSvg,
     MP3IconSvg,
     PdfIconSvg,
     VideoIconSvg,
-  } from "../Svgs";
+  } from "./Svgs";
 
 export const MediaDisplay: React.FC<{
     mediaType: string | null;

@@ -3,6 +3,7 @@ import BlankImg from "../../assets/Images/BlankImg.png"
 import { MessageBubbleProps } from "./messageBubble.interface";
 import { SenderContext, RecipientContext } from "../../contexts/ChatContext";
 import { DocsThumbnailSvg, PdfThumbnailSvg, PowerPointThumbnailSvg, XcelThumbnailSvg } from "../Svgs";
+import { isAudio, isDocument, isExcel, isImage, isPdf, isPowerPoint, isVideo } from "../../utils/fileExtensionChecker";
 
 export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ messageContent, senderId, fileUrl, fileName }) => {
     const [isExpanded, setIsExpanded] = useState<boolean>(false);
@@ -14,41 +15,13 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ message
     const toggleReadMore = () => {
         setIsExpanded(!isExpanded);
     };
-
-    const isImage = (fileName: string) => {
-        return [".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp", ".svg", ".tiff", ".ico"].some(ext => fileName.toLowerCase().includes(ext));
-    };
-
-    const isVideo = (fileName: string) => {
-        return [".mp4", ".mov", ".avi"].some(ext => fileName.toLowerCase().includes(ext));
-    };
-
-    const isAudio = (fileName: string) => {
-        return [".mp3"].some(ext =>
-            fileName.toLowerCase().includes(ext)
-        );
-    };
-
-    const isDocument = (fileName: string) => {
-        return [".doc", ".docx", ".txt"].some(ext =>
-            fileName.toLowerCase().includes(ext)
-        );
-    };
-    const isExcel = (fileName: string) => {
-        return [".xls", ".xlsx", ".csv"].some(ext =>
-            fileName.toLowerCase().includes(ext)
-        );
-    };
-    const isPowerPoint = (fileName: string) => {
-        return [".ppt", ".pptx"].some(ext =>
-            fileName.toLowerCase().includes(ext)
-        );
-    };
-    const isPdf = (fileName: string) => {
-        return [".pdf",].some(ext =>
-            fileName.toLowerCase().includes(ext)
-        );
-    };
+    isImage(fileName ?? "")
+    isAudio(fileName ?? "")
+    isDocument(fileName ?? "")
+    isExcel(fileName ?? "")
+    isPdf(fileName ?? "")
+    isPowerPoint(fileName ?? "")
+    isVideo(fileName ?? "")
 
     return (
         <>
@@ -73,42 +46,42 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ message
                                                 Your browser does not support the video tag.
                                             </video>
                                         ) : isDocument(fileName!) ? (
-                                            <div className={`w-full flex flex-col items-center ${messageContent ? "mb-2" : ""}`}>
+                                            <div className={`file-preview-container ${messageContent ? "mb-2" : ""}`}>
                                                 <a
                                                     href={fileUrl}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
-                                                    className="text-primary block items-center gap-2"
+                                                    className="file-preview-text"
                                                 >
-                                                    <div className="flex justify-center">
+                                                    <div className="media-thumnail-container">
                                                         <DocsThumbnailSvg />
                                                     </div>
                                                 </a>
                                                 <p className="text-sm text-primary max-w-[150px] truncate">{fileName}</p>
                                             </div>
                                         ) : isPowerPoint(fileName!) ? (
-                                            <div className={`w-full flex flex-col items-center ${messageContent ? "mb-2" : ""}`}>
+                                            <div className={`file-preview-container ${messageContent ? "mb-2" : ""}`}>
                                                 <a
                                                     href={fileUrl}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
-                                                    className="text-primary block items-center gap-2"
+                                                    className="file-preview-text"
                                                 >
-                                                    <div className="flex justify-center">
+                                                    <div className="media-thumnail-container">
                                                         <PowerPointThumbnailSvg />
                                                     </div>
                                                 </a>
                                                 <p className="text-sm text-primary max-w-[150px] truncate">{fileName}</p>
                                             </div>
                                         ) : isExcel(fileName!) ? (
-                                            <div className={`w-full flex flex-col items-center ${messageContent ? "mb-2" : ""}`}>
+                                            <div className={`file-preview-container ${messageContent ? "mb-2" : ""}`}>
                                                 <a
                                                     href={fileUrl}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
-                                                    className="text-primary block items-center gap-2"
+                                                    className="file-preview-text"
                                                 >
-                                                    <div className="flex justify-center max-w-[250px]">
+                                                    <div className="media-thumnail-container max-w-[250px]">
                                                         <XcelThumbnailSvg />
                                                     </div>
                                                 </a>
@@ -120,14 +93,14 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ message
                                                 Your browser does not support the audio element.
                                             </audio>
                                         ) : isPdf(fileName!) ? (
-                                            <div className={`w-full flex flex-col items-center ${messageContent ? "mb-2" : ""}`}>
+                                            <div className={`file-preview-container ${messageContent ? "mb-2" : ""}`}>
                                                 <a
                                                     href={fileUrl}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
-                                                    className="text-primary block items-center gap-2"
+                                                    className="file-preview-text"
                                                 >
-                                                    <div className="flex justify-center">
+                                                    <div className="media-thumnail-container">
                                                         <PdfThumbnailSvg />
                                                     </div>
                                                 </a>
@@ -145,7 +118,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ message
                                     )}
 
                                     {messageContent && (
-                                        <div className={!fileUrl ? "bg-primary text-black rounded-[10px] rounded-br-none p-2 break-words" : ""}>
+                                        <div className={`!fileUrl ? " bg-primary text-black rounded-[10px] rounded-br-none p-2  break-words max-w-full" : "" `}>
                                             {isExpanded || messageContent.length <= maxChars
                                                 ? messageContent
                                                 : `${messageContent.slice(0, maxChars)} `}
@@ -180,42 +153,42 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ message
                                                 Your browser does not support the video tag.
                                             </video>
                                         ) : isDocument(fileName!) ? (
-                                            <div className={`w-full flex flex-col items-center ${messageContent ? "mb-2" : ""}`}>
+                                            <div className={`file-preview-container ${messageContent ? "mb-2" : ""}`}>
                                                 <a
                                                     href={fileUrl}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
-                                                    className="text-primary block items-center gap-2"
+                                                    className="file-preview-text"
                                                 >
-                                                    <div className="flex justify-center">
+                                                    <div className="media-thumnail-container">
                                                         <DocsThumbnailSvg />
                                                     </div>
                                                 </a>
                                                 <p className="text-sm text-primary max-w-[150px] truncate">{fileName}</p>
                                             </div>
                                         ) : isPowerPoint(fileName!) ? (
-                                            <div className={`w-full flex flex-col items-center ${messageContent ? "mb-2" : ""}`}>
+                                            <div className={`file-preview-container ${messageContent ? "mb-2" : ""}`}>
                                                 <a
                                                     href={fileUrl}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
-                                                    className="text-primary block items-center gap-2"
+                                                    className="file-preview-text"
                                                 >
-                                                    <div className="flex justify-center">
+                                                    <div className="media-thumnail-container">
                                                         <PowerPointThumbnailSvg />
                                                     </div>
                                                 </a>
                                                 <p className="text-sm text-primary max-w-[150px] truncate">{fileName}</p>
                                             </div>
                                         ) : isExcel(fileName!) ? (
-                                            <div className={`w-full flex flex-col items-center ${messageContent ? "mb-2" : ""}`}>
+                                            <div className={`file-preview-container ${messageContent ? "mb-2" : ""}`}>
                                                 <a
                                                     href={fileUrl}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
-                                                    className="text-primary block items-center gap-2"
+                                                    className="file-preview-text"
                                                 >
-                                                    <div className="flex justify-center max-w-[250px]">
+                                                    <div className="media-thumnail-container max-w-[250px]">
                                                         <XcelThumbnailSvg />
                                                     </div>
                                                 </a>
@@ -227,14 +200,14 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ message
                                                 Your browser does not support the audio element.
                                             </audio>
                                         ) : isPdf(fileName!) ? (
-                                            <div className={`w-full flex flex-col items-center ${messageContent ? "mb-2" : ""}`}>
+                                            <div className={`file-preview-container ${messageContent ? "mb-2" : ""}`}>
                                                 <a
                                                     href={fileUrl}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
-                                                    className="text-primary block items-center gap-2"
+                                                    className="file-preview-text"
                                                 >
-                                                    <div className="flex justify-center">
+                                                    <div className="media-thumnail-container">
                                                         <PdfThumbnailSvg />
                                                     </div>
                                                 </a>
@@ -275,7 +248,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ message
                     className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50"
                     onClick={() => setSelectedImage(null)}
                 >
-                    <div className="relative max-w-3xl w-full flex justify-center">
+                    <div className="relative max-w-3xl w-full media-thumnail-container bg-white rounded">
                         <img
                             src={selectedImage}
                             alt="Full screen"

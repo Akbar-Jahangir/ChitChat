@@ -18,7 +18,7 @@ import { SenderContext, RecipientContext } from "../../contexts/ChatContext";
 import { SidebarProps } from "./sidebar.interface";
 import BlankImg from "../../assets/Images/BlankImg.png"
 import useDatabase from "../../hooks/useDatabase";
-import { MediaDisplay } from "../MediaDisplay/MediaDisplay";
+import { MediaDisplay } from "../MediaDisplay";
 import { Message } from "../../interfaces/message.interface";
 
 
@@ -102,7 +102,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ alignment = null, }) => {
     if (recipientId) {
       fetchMessages();
     }
-  }, [recipientId, senderId]);
+  }, [recipientId]);
 
 
   const getFileTypeFromName = (fileName: string): string => {

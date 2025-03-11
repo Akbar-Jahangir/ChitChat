@@ -8,7 +8,7 @@ import { storage } from "../../utils/firebaseConfig";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { uid } from "uid";
 import { toast } from "react-toastify";
-import { SenderContext } from "../../contexts/ChatContext";
+import { RecipientContext, SenderContext } from "../../contexts/ChatContext";
 import { SignUpProps } from "./signUp.interface";
 
 const SignUp: React.FC<SignUpProps> = ({ isEditMode }) => {
@@ -27,19 +27,18 @@ const SignUp: React.FC<SignUpProps> = ({ isEditMode }) => {
   const navigate = useNavigate();
   const { signUp, updateUserProfile, getUserById } = useDatabase();
   const { senderId } = useContext(SenderContext);
+  const {setRecipientId}=useContext(RecipientContext)
 
-  // Fetch user data when in edit mode
   useEffect(() => {
 
     const fetchUserData = async () => {
       if (isEditMode && senderId) {
-        setLoading(true);
+        // setLoading(true);
         try {
           const user = await getUserById(senderId);
           if (user) {
             setName(user.username);
             setEmail(user.email);
-            // Don't set the password for security reasons
             setPassword(user.password);
             setConfirmPassword(user.password);
             setProfilePicUrl(user.profilePicUrl);
@@ -58,6 +57,7 @@ const SignUp: React.FC<SignUpProps> = ({ isEditMode }) => {
 
     fetchUserData();
   }, []);
+
 
   const uploadImageAndGetURL = async (file: File) => {
     const storageRef = ref(storage, `userProfilePics/${uid()}`);
@@ -144,7 +144,8 @@ const SignUp: React.FC<SignUpProps> = ({ isEditMode }) => {
         }
 
         toast.success("Profile updated successfully!");
-        navigate("/");
+        navigate("/signIn")
+        setRecipientId("")
       } else {
         // Register new user
         const userData = {

@@ -1,3 +1,3 @@
 export interface ChatItemProps {
-  currentUserId:string
+  searchValue: string;
 }

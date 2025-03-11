@@ -10,7 +10,7 @@ const SignIn: React.FC = () => {
   const [password, setPassword] = useState<string>("");
   const [isEmail, setIsEmail] = useState<boolean>(true);
   const [isPassword, setIsPassword] = useState<boolean>(true);
-  const [loading, setLoading] = useState<boolean>(false); // 🔥 Loading state
+  const [loading, setLoading] = useState<boolean>(false);
 
   const { login } = useDatabase();
   const navigate = useNavigate();
@@ -32,13 +32,37 @@ const SignIn: React.FC = () => {
     }
 
     setLoading(true);
+    
+    // Check internet connection before attempting login
+    if (!navigator.onLine) {
+      toast.error("No internet connection. Please check your network and try again.");
+      setLoading(false);
+      return;
+    }
+    
     try {
-      await login(email, password);
+      // Set a timeout to detect slow connections
+      const loginPromise = login(email, password);
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error("Connection timeout")), 10000); // 10 second timeout
+      });
+      
+      await Promise.race([loginPromise, timeoutPromise]);
       navigate("/chat");
-    } catch  {
-      toast.error("Login failed. Please check your credentials.");
+    } catch (error) {
+      // Handle different types of errors
+      if (!navigator.onLine) {
+        toast.error("Internet connection lost. Please check your network.");
+      } else if (error instanceof Error && error.message === "Connection timeout") {
+        toast.error("Connection is too slow. Please check your internet connection.");
+      } else if (error instanceof Error && error.message.includes("network")) {
+        toast.error("Network error. Please check your internet connection and try again.");
+      } else {
+        toast.error("Login failed. Please check your credentials.");
+      }
+      console.error("Login error:", error);
     } finally {
-      setLoading(false); 
+      setLoading(false);
     }
   };
 
@@ -75,14 +99,13 @@ const SignIn: React.FC = () => {
           />
         </div>
 
-
         <Button
           type="submit"
           className={`bg-primary p-1 text-lg font-semibold rounded text-white w-full flex justify-center ${
             loading ? "opacity-50 cursor-not-allowed" : ""
           }`}
           disabled={loading}
-          btnText={loading ? "Loading..." : "Sign In"} // Show loading text
+          btnText={loading ? "Signing in..." : "Sign In"}
         />
       </form>
       <div>
