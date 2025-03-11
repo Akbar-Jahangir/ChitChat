@@ -9,7 +9,7 @@ export interface HeaderProps {
   actionIcons: {
     id: string;
     icon: React.ReactNode;
-    type?: 'search' | 'edit' | 'other';
+    type?: 'search' | 'edit' | 'favorite' |'bell' | 'toggle';
     onClick?: () => void;
   }[];
   searchValue?: string;
