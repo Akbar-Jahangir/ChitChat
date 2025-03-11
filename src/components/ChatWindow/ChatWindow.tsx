@@ -24,7 +24,6 @@ import FilePreview from "../FilePreview/FilePreview";
 import { ChatWindowProps } from "./chatWindow.interface";
 import { MessageGroup } from "./messageGroup.interface";
 import { PusherMembers } from "./pusherMember.interface";
-import { formatMessageGroupDate } from "../../utils/dateFormatter";
 
 export const ChatWindow: React.FC<ChatWindowProps> = ({ toggleRightSidebar, rightSidebarVisible }) => {
     
@@ -84,7 +83,42 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ toggleRightSidebar, righ
         { id: 2, icon: <CameraIconSvg />, type: "camera" },
     ];
 
-    // Helper functions
+    const formatMessageGroupDate = (timestamp: number): { display: string; timestamp: number } => {
+        const messageDate = new Date(timestamp);
+        const today = new Date();
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+      
+        // Reset hours to compare just the dates
+        const messageDay = new Date(messageDate.getFullYear(), messageDate.getMonth(), messageDate.getDate());
+        const todayDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+        const yesterdayDay = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate());
+      
+        // We'll use the timestamp at midnight of each day for sorting
+        const midnightTimestamp = new Date(
+          messageDate.getFullYear(),
+          messageDate.getMonth(),
+          messageDate.getDate()
+        ).getTime();
+      
+        if (messageDay.getTime() === todayDay.getTime()) {
+          return { display: "", timestamp: midnightTimestamp }; // Empty string for today - no header will show
+        } else if (messageDay.getTime() === yesterdayDay.getTime()) {
+          return { display: "Yesterday", timestamp: midnightTimestamp };
+        } else {
+          // Format as "3/7/2025" instead of "March 7, 2025"
+          return {
+            display: messageDate.toLocaleDateString('en-US', {
+              year: 'numeric',
+              month: 'numeric',
+              day: 'numeric'
+            }),
+            timestamp: midnightTimestamp
+          };
+        }
+      };
+
+    
     function groupMessagesByDate(messages: Message[]): MessageGroup[] {
         const groups: Record<string, { messages: Message[], timestamp: number }> = {};
 

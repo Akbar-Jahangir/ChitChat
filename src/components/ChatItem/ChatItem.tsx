@@ -5,17 +5,16 @@ import useDatabase from "../../hooks/useDatabase";
 import { RecipientContext, SenderContext } from "../../contexts/ChatContext";
 import { Message } from "../../interfaces/message.interface";
 import BlankImg from "../../assets/Images/BlankImg.png"
-import {formatChatListTimestamp} from "../../utils/dateFormatter"
 import { ChatItemProps } from "./chatItem.interface";
 
 export const ChatItem: React.FC<ChatItemProps> = React.memo(({ searchValue }) => {
   const { storedUsers, getAllMessages } = useDatabase();
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
-  
+
   // Track the last seen message timestamp for each chat
   const [lastSeenTimestamps, setLastSeenTimestamps] = useState<Record<string, number>>({});
-  
+
   const { setRecipientname, setRecipientId, setRecipientPicUrl } = useContext(RecipientContext);
   const { senderId } = useContext(SenderContext);
 
@@ -44,12 +43,12 @@ export const ChatItem: React.FC<ChatItemProps> = React.memo(({ searchValue }) =>
         console.error("Error fetching messages:", error);
       }
     };
-    
+
     fetchMessages();
-    
+
     // Set up an interval to poll for new messages
     const intervalId = setInterval(fetchMessages, 5000); // Poll every 5 seconds
-    
+
     return () => clearInterval(intervalId);
 
   }, [senderId]);
@@ -60,25 +59,25 @@ export const ChatItem: React.FC<ChatItemProps> = React.memo(({ searchValue }) =>
       setRecipientId(userId);
       setRecipientPicUrl(profilePicUrl);
       setActiveChatId(userId);
-      
+
       // Get all messages for this conversation
       const userMessages = messages.filter(
         (msg) =>
           (msg.senderId === userId && msg.recipientId === senderId) ||
           (msg.senderId === senderId && msg.recipientId === userId)
       );
-      
+
       // Find the latest message timestamp
       if (userMessages.length > 0) {
         const latestTimestamp = Math.max(...userMessages.map(msg => msg.timestamp));
-        
+
         // Update the last seen timestamp for this chat
         const newTimestamps = {
           ...lastSeenTimestamps,
           [userId]: latestTimestamp
         };
         setLastSeenTimestamps(newTimestamps);
-        
+
         // Save to localStorage
         localStorage.setItem(`lastSeenTimestamps_${senderId}`, JSON.stringify(newTimestamps));
       }
@@ -88,7 +87,7 @@ export const ChatItem: React.FC<ChatItemProps> = React.memo(({ searchValue }) =>
 
   const getLastMessage = useCallback((userId: string): Message | null => {
     if (!messages || messages.length === 0) return null;
-    
+
     const userMessages = messages
       .filter(
         (msg) =>
@@ -104,14 +103,14 @@ export const ChatItem: React.FC<ChatItemProps> = React.memo(({ searchValue }) =>
     if (activeChatId === userId) {
       return 0;
     }
-    
+
     const lastSeenTimestamp = lastSeenTimestamps[userId] || 0;
-    
+
     // Count messages that came after the last seen timestamp
     return messages.filter(
-      (msg) => 
-        msg.senderId === userId && 
-        msg.recipientId === senderId && 
+      (msg) =>
+        msg.senderId === userId &&
+        msg.recipientId === senderId &&
         msg.timestamp > lastSeenTimestamp
     ).length;
   }, [activeChatId, lastSeenTimestamps, messages, senderId]);
@@ -119,11 +118,11 @@ export const ChatItem: React.FC<ChatItemProps> = React.memo(({ searchValue }) =>
   // Function to format preview text for messages with files
   const getMessagePreview = useCallback((message: Message | null): string => {
     if (!message) return "";
-    
+
     // Check if message has a file
     if (message.fileUrl) {
       const fileText = message.messageContent ? message.messageContent + " · " : "";
-      
+
       // Show file name if available, otherwise show file type
       if (message.fileName) {
         return fileText + message.fileName;
@@ -135,7 +134,7 @@ export const ChatItem: React.FC<ChatItemProps> = React.memo(({ searchValue }) =>
         return fileText + "File";
       }
     }
-    
+
     // Return message content if no file
     return message.messageContent || "";
   }, []);
@@ -162,6 +161,31 @@ export const ChatItem: React.FC<ChatItemProps> = React.memo(({ searchValue }) =>
       .map((item) => item.user);
   }, [memoizedUsers, getLastMessage, searchValue]);
 
+  const formatChatListTimestamp = (timestamp: number): string => {
+    const messageDate = new Date(timestamp);
+    const today = new Date();
+    today.setDate(today.getDate());
+
+    const yesterday = new Date();
+    yesterday.setDate(today.getDate() - 1);
+
+    const isToday =
+      messageDate.getDate() === today.getDate() &&
+      messageDate.getMonth() === today.getMonth() &&
+      messageDate.getFullYear() === today.getFullYear();
+
+    const isYesterday =
+      messageDate.getDate() === yesterday.getDate() &&
+      messageDate.getMonth() === yesterday.getMonth() &&
+      messageDate.getFullYear() === yesterday.getFullYear();
+
+    if (isToday) return "Today";
+    if (isYesterday) return "Yesterday";
+
+    // Return month number instead of name: "MM/DD/YY" format
+    return `${messageDate.getMonth() + 1}/${messageDate.getDate()}/${messageDate.getFullYear().toString().slice(2)}`;
+  };
+
   return (
     <>
       {filteredUsers.map((user: ChatUserProps) => {
@@ -173,18 +197,17 @@ export const ChatItem: React.FC<ChatItemProps> = React.memo(({ searchValue }) =>
 
         return (
           <div
-            className={`w-[95%] flex flex-col items-center rounded-sm py-2 cursor-pointer ${
-              activeChatId === user.userId ? "bg-slate" : "hover:bg-slate"
-            }`}
+            className={`w-[95%] flex flex-col items-center rounded-sm py-2 cursor-pointer ${activeChatId === user.userId ? "bg-slate" : "hover:bg-slate"
+              }`}
             key={user.userId}
             onClick={() => handleClick(user.userId, user.username, user.profilePicUrl)}
           >
             <div className="flex w-[95%] justify-between">
               <div className="w-[17%]">
-              <div
-                className="max-w-[45px] max-h-[45px] min-w-[45px] min-h-[45px] rounded-full bg-cover bg-center"
-                style={{ backgroundImage: `url(${user.profilePicUrl || BlankImg })` }}
-              ></div>
+                <div
+                  className="max-w-[45px] max-h-[45px] min-w-[45px] min-h-[45px] rounded-full bg-cover bg-center"
+                  style={{ backgroundImage: `url(${user.profilePicUrl || BlankImg})` }}
+                ></div>
               </div>
 
               <div className="w-[77%]">
