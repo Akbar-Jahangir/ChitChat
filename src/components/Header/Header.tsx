@@ -4,6 +4,7 @@ import { Button } from "../Button";
 import BlankImg from "../../assets/Images/BlankImg.png";
 import { OnlineIconSvg } from "../Svgs";
 import { Searchbar } from "../Searchbar";
+import { useNavigate } from "react-router-dom";
 
 export const Header: React.FC<HeaderProps> = ({ 
   userInfo, 
@@ -13,10 +14,24 @@ export const Header: React.FC<HeaderProps> = ({
   onSearchIconClick 
 }) => {
   const [showSearchBar, setShowSearchBar] = React.useState(false);
+  const navigate = useNavigate();
   
   const handleSearchIconClick = () => {
     setShowSearchBar(!showSearchBar);
     if (onSearchIconClick) onSearchIconClick();
+  };
+
+  const handleIconClick = (iconType:string) => {
+    console.log(iconType);
+    
+    if (iconType === 'search') {
+      handleSearchIconClick();
+    } else if (iconType === 'edit' && userInfo.userId) {
+      navigate(`/editProfile`);
+    }
+    // } else if (icon.onClick) {
+    //   icon.onClick();
+    // }
   };
   
   return (
@@ -46,7 +61,7 @@ export const Header: React.FC<HeaderProps> = ({
               key={icon.id} 
               icon={icon.icon} 
               className="focus:outline-none"
-              onClick={icon.type === 'search' ? handleSearchIconClick : icon.onClick}
+              onClick={() => handleIconClick(icon.type!)}
             />
           ))}
         </div>

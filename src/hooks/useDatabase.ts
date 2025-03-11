@@ -1,6 +1,6 @@
+import { RegisterUserProps } from './../interfaces/registerUser.interface';
 import { SenderContext } from "./../contexts/ChatContext/ChatContext";
 import { useContext, useState, useEffect } from "react";
-import { signUpProps } from "../interfaces/signUp.interface";
 import { ChatUserProps } from "../interfaces/chatUser.interface";
 import { Message } from "../interfaces/message.interface";
 import { db, query, where, getDocs } from "../utils/firebaseConfig";
@@ -75,7 +75,7 @@ const useDatabase = () => {
     }
   };
 
-  const signUp = async (userData: signUpProps) => {
+  const signUp = async (userData: RegisterUserProps) => {
     try {
       const userRef = doc(db, "users", userData.email);
       const userSnap = await getDoc(userRef);
@@ -158,6 +158,7 @@ const useDatabase = () => {
     fetchUsers();
   }, []);
 
+
   const getChatHistory = async (
     senderId: string,
     recipientId: string
@@ -190,9 +191,8 @@ const useDatabase = () => {
       return [];
     }
   };
-
-
-const getAllMessages = async (): Promise<Message[]> => {
+  
+  const getAllMessages = async (): Promise<Message[]> => {
   try {
     const conversationsRef = collection(db, "conversations");
 
@@ -213,6 +213,71 @@ const getAllMessages = async (): Promise<Message[]> => {
   }
 };
 
+const getUserById = async (userId: string) => {
+  try {
+    const usersRef = collection(db, "users");
+    const q = query(usersRef, where("userId", "==", userId));
+    const querySnapshot = await getDocs(q);
+    
+    if (querySnapshot.empty) {
+      return null;
+    }
+    
+    const userData = querySnapshot.docs[0].data();
+    return {
+      userId: userData.userId,
+      username: userData.username,
+      email: userData.email,
+      profilePicUrl: userData.profilePicUrl,
+      password:userData.password
+    };
+  } catch (error) {
+    console.error("Error fetching user by ID:", error);
+    throw error;
+  }
+};
+const updateUserProfile = async (userData:RegisterUserProps) => {
+  try {
+    // First, get the user document reference
+    const usersRef = collection(db, "users");
+    const q = query(usersRef, where("userId", "==", userData.userId));
+    const querySnapshot = await getDocs(q);
+    
+    if (querySnapshot.empty) {
+      return {
+        success: false,
+        message: "User not found.",
+      };
+    }
+
+    const userDoc = querySnapshot.docs[0];
+    const userRef = doc(db, "users", userDoc.id);
+    
+    // Create updated data object
+    const updatedData = {
+      username: userData.username,
+      profilePicUrl: userData.profilePicUrl,
+      password:userData.password
+    };
+  
+    if (userData.password) {
+      updatedData.password = userData.password;
+    }
+    
+    // Update the document
+    await updateDoc(userRef, updatedData);
+    
+    // Update context state
+    setSendername(userData.username);
+    setSenderPicUrl(userData.profilePicUrl!);
+    
+    return { success: true, message: "Profile updated successfully!" };
+  } catch (error) {
+    console.error("Error updating user profile:", error);
+    return { success: false, message: "Unexpected error occurred." };
+  }
+};
+
   return {
     login,
     signUp,
@@ -220,6 +285,8 @@ const getAllMessages = async (): Promise<Message[]> => {
     saveMessage,
     getChatHistory,
     getAllMessages,
+    updateUserProfile,
+    getUserById
   };
 };
 

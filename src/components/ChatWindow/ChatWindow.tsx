@@ -10,7 +10,7 @@ import {
     SearchIconSvg,
     SendMessageIconSvg,
     VoiceIconSvg,
-   ArrowIconSvg,
+    ArrowIconSvg,
 } from "../Svgs";
 import { Header } from "../Header";
 import { SenderContext, RecipientContext } from "../../contexts/ChatContext";
@@ -24,13 +24,7 @@ import FilePreview from "../FilePreview/FilePreview";
 import { ChatWindowProps } from "./chatWindow.interface";
 import { MessageGroup } from "./messageGroup.interface";
 import { PusherMembers } from "./pusherMember.interface";
-
-
-// Define Pusher keys and server URL
-const PUSHER_KEY = "33466c91963fd345d327";
-const PUSHER_CLUSTER = "ap2";
-// Make sure this points to your Vercel backend URL
-const SERVER_URL = "https://chit-chat.koyeb.app";
+import { formatMessageGroupDate } from "../../utils/dateFormatter";
 
 export const ChatWindow: React.FC<ChatWindowProps> = ({ toggleRightSidebar, rightSidebarVisible }) => {
     const [outgoingMessage, setOutgoingMessage] = useState<string>("");
@@ -43,23 +37,22 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ toggleRightSidebar, righ
     const [isRecipientOnline, setIsRecipientOnline] = useState<boolean>(false);
     const [searchValue, setSearchValue] = useState<string>("");
     const [filteredMessages, setFilteredMessages] = useState<Message[]>([]);
-
-    // Refs to track connection states
     const pusherRef = useRef<Pusher | null>(null);
     const messageChannelRef = useRef<Channel | null>(null);
     const presenceChannelRef = useRef<PresenceChannel | null>(null);
     const heartbeatIntervalRef = useRef<NodeJS.Timeout | null>(null);
     const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
     const lastPresenceUpdateRef = useRef<number>(0);
-
     const { saveMessage, getChatHistory } = useDatabase();
-
     const {
         recipientname,
         recipientId,
         recipientPicUrl,
     } = useContext(RecipientContext);
     const { senderId } = useContext(SenderContext);
+    const PUSHER_KEY = "33466c91963fd345d327";
+    const PUSHER_CLUSTER = "ap2";
+    const SERVER_URL = "https://chit-chat.koyeb.app";
 
     const userInfo = {
         userId: recipientId,
@@ -68,13 +61,12 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ toggleRightSidebar, righ
         isOnline: isRecipientOnline
     };
 
-    // Create the arrow icon for sidebar toggle
     const SidebarToggleIcon = () => (
-        <div 
+        <div
             onClick={toggleRightSidebar}
             className={`cursor-pointer transition-transform duration-300 ${rightSidebarVisible ? 'rotate-180' : ''}`}
         >
-            < ArrowIconSvg />
+            <ArrowIconSvg />
         </div>
     );
 
@@ -83,48 +75,12 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ toggleRightSidebar, righ
         { id: 2, icon: <CameraIconSvg />, accept: "image/*,video/*" },
     ];
 
-    const formatMessageDate = (timestamp: number): { display: string; timestamp: number } => {
-        const messageDate = new Date(timestamp);
-        const today = new Date();
-        const yesterday = new Date(today);
-        yesterday.setDate(yesterday.getDate() - 1);
-
-        // Reset hours to compare just the dates
-        const messageDay = new Date(messageDate.getFullYear(), messageDate.getMonth(), messageDate.getDate());
-        const todayDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
-        const yesterdayDay = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate());
-
-        // We'll use the timestamp at midnight of each day for sorting
-        const midnightTimestamp = new Date(
-            messageDate.getFullYear(),
-            messageDate.getMonth(),
-            messageDate.getDate()
-        ).getTime();
-
-        if (messageDay.getTime() === todayDay.getTime()) {
-            return { display: "", timestamp: midnightTimestamp }; // Empty string for today - no header will show
-        } else if (messageDay.getTime() === yesterdayDay.getTime()) {
-            return { display: "Yesterday", timestamp: midnightTimestamp };
-        } else {
-            // Format as "3/7/2025" instead of "March 7, 2025"
-            return {
-                display: messageDate.toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'numeric',  // Changed from 'long' to 'numeric'
-                    day: 'numeric'
-                }),
-                timestamp: midnightTimestamp
-            };
-        }
-    };
-
     // Group messages by date
     const groupMessagesByDate = useCallback((messages: Message[]) => {
         const groups: Record<string, { messages: Message[], timestamp: number }> = {};
 
         messages.forEach(message => {
-            const { display, timestamp } = formatMessageDate(message.timestamp);
-            // Use display as the key - empty string for today
+            const { display, timestamp } = formatMessageGroupDate(message.timestamp);
             if (!groups[display]) {
                 groups[display] = { messages: [], timestamp };
             }
@@ -137,7 +93,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ toggleRightSidebar, righ
                 messages: messages.sort((a, b) => a.timestamp - b.timestamp),
                 timestamp
             }))
-            .sort((a, b) => a.timestamp - b.timestamp); // Oldest to newest
+            .sort((a, b) => a.timestamp - b.timestamp);
     }, []);
 
     const sendMessageToServer = async (messageData: Message) => {
@@ -159,7 +115,6 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ toggleRightSidebar, righ
                 return false;
             }
 
-
             return true;
         } catch (error) {
             console.error("Error sending message:", error);
@@ -169,7 +124,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ toggleRightSidebar, righ
 
     const handleSubmit = useCallback(async (e: React.FormEvent) => {
         e.preventDefault();
-        
+
         if (!outgoingMessage.trim() && !uploadedFileUrl) return;
 
         const messageData: Message = {
@@ -234,7 +189,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ toggleRightSidebar, righ
         return `chat-${sortedIds[0]}-${sortedIds[1]}`;
     };
 
-    // Join or leave presence channel
+    
     const updatePresence = useCallback(async (action: "join" | "leave", force: boolean = false) => {
         if (!senderId) {
             return;
@@ -284,7 +239,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ toggleRightSidebar, righ
         }
     }, [senderId]);
 
-    // Clean up all Pusher resources
+
     const cleanupPusher = useCallback(() => {
         // Clear heartbeat interval
         if (heartbeatIntervalRef.current) {
@@ -335,8 +290,8 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ toggleRightSidebar, righ
         }
     }, []);
 
-    // Initialize Pusher and channels
-    const setupPusher = useCallback(() => {
+
+    useEffect(() => {
         if (!senderId || !recipientId) {
             return;
         }
@@ -375,53 +330,83 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ toggleRightSidebar, righ
             }
 
             reconnectTimeoutRef.current = setTimeout(() => {
+                // Re-setup Pusher on connection error
+                cleanupPusher();
                 setupPusher();
             }, 5000);
         });
 
-        // Subscribe to message channel
-        const chatChannelName = getChannelName(senderId, recipientId);
-        messageChannelRef.current = pusherRef.current.subscribe(chatChannelName);
+        // Function to set up channels and bindings
+        const setupPusher = () => {
+            if (!pusherRef.current) return;
 
-        // Bind message events
-        messageChannelRef.current.bind("new-message", (data: Message) => {
-            setStoredMessages((prevMessages) => {
-                // Check if the message already exists to avoid duplicates
-                if (prevMessages.some((msg) => msg.messageId === data.messageId)) {
-                    return prevMessages;
-                }
+            // Subscribe to message channel
+            const chatChannelName = getChannelName(senderId, recipientId);
+            messageChannelRef.current = pusherRef.current.subscribe(chatChannelName);
 
-                // Add the new message and sort
-                return [...prevMessages, data].sort((a, b) => a.timestamp - b.timestamp);
+            // Bind message events
+            messageChannelRef.current.bind("new-message", (data: Message) => {
+                setStoredMessages((prevMessages) => {
+                    // Check if the message already exists to avoid duplicates
+                    if (prevMessages.some((msg) => msg.messageId === data.messageId)) {
+                        return prevMessages;
+                    }
+
+                    // Add the new message and sort
+                    return [...prevMessages, data].sort((a, b) => a.timestamp - b.timestamp);
+                });
             });
-        });
 
-        // Subscribe to presence channel
-        const presenceChannelName = "presence-users";
-        presenceChannelRef.current = pusherRef.current.subscribe(presenceChannelName) as PresenceChannel;
+            // Subscribe to presence channel
+            const presenceChannelName = "presence-users";
+            presenceChannelRef.current = pusherRef.current.subscribe(presenceChannelName) as PresenceChannel;
 
-        // Bind presence events
-        presenceChannelRef.current.bind("pusher:subscription_succeeded", (members: PusherMembers) => {
-            // Check if recipient is in the members list
-            const isOnline = Object.keys(members.members).includes(recipientId);
-            setIsRecipientOnline(isOnline);
-        });
+            // Bind presence events
+            presenceChannelRef.current.bind("pusher:subscription_succeeded", (members: PusherMembers) => {
+                // Check if recipient is in the members list
+                const isOnline = Object.keys(members.members).includes(recipientId);
+                setIsRecipientOnline(isOnline);
+            });
 
-        presenceChannelRef.current.bind("pusher:member_added", (member: { id: string; info?: unknown }) => {
-            if (member.id === recipientId) {
-                setIsRecipientOnline(true);
+            presenceChannelRef.current.bind("pusher:member_added", (member: { id: string; info?: unknown }) => {
+                if (member.id === recipientId) {
+                    setIsRecipientOnline(true);
+                }
+            });
+
+            presenceChannelRef.current.bind("pusher:member_removed", (member: { id: string; info?: unknown }) => {
+                if (member.id === recipientId) {
+                    setIsRecipientOnline(false);
+                }
+            });
+        };
+
+        // Set up Pusher channels
+        setupPusher();
+
+        // Function to check online status
+        const checkOnlineStatus = () => {
+            if (presenceChannelRef.current && recipientId) {
+                const members = presenceChannelRef.current.members;
+                if (members) {
+                    const memberIds = Object.keys(members.members);
+                    const isOnline = memberIds.includes(recipientId);
+
+                    // Only update and log if status changes
+                    setIsRecipientOnline(prevStatus => {
+                        if (prevStatus !== isOnline) {
+                            console.log(`Recipient ${recipientId} online status changed to:`, isOnline);
+                        }
+                        return isOnline;
+                    });
+                }
             }
-        });
+        };
 
-        presenceChannelRef.current.bind("pusher:member_removed", (member: { id: string; info?: unknown }) => {
-            if (member.id === recipientId) {
-                setIsRecipientOnline(false);
-            }
-        });
-
-        // Set up heartbeat instead of frequent presence updates
+        // Set up heartbeat and status checking
         heartbeatIntervalRef.current = setInterval(() => {
             if (pusherRef.current?.connection.state === "connected") {
+                // Send heartbeat to keep connection alive
                 sendHeartbeat().catch(error => {
                     console.error("Error in heartbeat:", error);
                 });
@@ -430,12 +415,28 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ toggleRightSidebar, righ
                 updatePresence("join").catch(error => {
                     console.error("Error in periodic presence update:", error);
                 });
+
+                // Check online status regularly
+                checkOnlineStatus();
             }
         }, 30000); // Every 30 seconds
 
-    }, [cleanupPusher, recipientId, senderId, updatePresence, sendHeartbeat]);
+        // Handle beforeunload to properly leave presence
+        const handleBeforeUnload = () => {
+            updatePresence("leave", true);
+        };
 
-    // Load chat history
+        window.addEventListener("beforeunload", handleBeforeUnload);
+
+        // Cleanup function
+        return () => {
+            cleanupPusher();
+            window.removeEventListener("beforeunload", handleBeforeUnload);
+        };
+    }, [recipientId, senderId, updatePresence, sendHeartbeat, cleanupPusher]);
+
+
+
     useEffect(() => {
         const fetchMessages = async () => {
             if (!senderId || !recipientId) {
@@ -460,78 +461,24 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ toggleRightSidebar, righ
         fetchMessages();
     }, [recipientId, senderId, getChatHistory]);
 
-  
-    useEffect(() => {
-        if (senderId && recipientId) {
-            setupPusher();
-        }
 
-        return () => {
-            cleanupPusher();
-        };
-    }, [recipientId, senderId, setupPusher, cleanupPusher]);
-
-    // Filter messages when search value changes
     useEffect(() => {
-        if (!searchValue.trim()) {
-            // If no search term, use all stored messages
-            setFilteredMessages(storedMessages);
-        } else {
+        // First handle filtering
+        let messagesToProcess = storedMessages;
+
+        if (searchValue.trim()) {
             // Filter messages that contain the search term in the content or filename
-            const filtered = storedMessages.filter(msg =>
+            messagesToProcess = storedMessages.filter(msg =>
                 (msg.messageContent && msg.messageContent.toLowerCase().includes(searchValue.toLowerCase())) ||
                 (msg.fileName && msg.fileName.toLowerCase().includes(searchValue.toLowerCase()))
             );
-            setFilteredMessages(filtered);
         }
-    }, [searchValue, storedMessages]);
 
+        setFilteredMessages(messagesToProcess);
 
-    useEffect(() => {
-        setGroupedMessages(groupMessagesByDate(filteredMessages));
-    }, [filteredMessages, groupMessagesByDate]);
-
-  
-    useEffect(() => {
-        const handleBeforeUnload = () => {
-            updatePresence("leave", true);
-        };
-
-        window.addEventListener("beforeunload", handleBeforeUnload);
-
-        return () => {
-            window.removeEventListener("beforeunload", handleBeforeUnload);
-        };
-    }, [updatePresence]);
-
-  
-    useEffect(() => {
-        // Function to check recipient's online status
-        const checkOnlineStatus = () => {
-            if (presenceChannelRef.current && recipientId) {
-                const members = presenceChannelRef.current.members;
-                if (members) {
-                    const memberIds = Object.keys(members.members);
-                    const isOnline = memberIds.includes(recipientId);
-
-                    // Only update and log if status changes
-                    setIsRecipientOnline(prevStatus => {
-                        if (prevStatus !== isOnline) {
-                            console.log(`Recipient ${recipientId} online status changed to:`, isOnline);
-                        }
-                        return isOnline;
-                    });
-                }
-            }
-        };
-
-        // Check immediately
-        checkOnlineStatus();
-        const intervalId = setInterval(checkOnlineStatus, 30000);
-        return () => {
-            clearInterval(intervalId);
-        };
-    }, [recipientId]);
+        // Then group the filtered messages
+        setGroupedMessages(groupMessagesByDate(messagesToProcess));
+    }, [searchValue, storedMessages, groupMessagesByDate]);
 
     const handleClearSearch = () => {
         setSearchValue("");
@@ -564,15 +511,6 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ toggleRightSidebar, righ
                         )}
                         {groupedMessages.map((group) => (
                             <div key={group.timestamp} className="w-full">
-                                {group.date && (
-                                    <div className="flex justify-center my-4 items-center">
-                                        <span className="bg-slate w-full h-[1px]"></span>
-                                        <span className="bg-gray-100 rounded-full px-3 py-1 text-sm text-slate mx-[1px] w-fit">
-                                            {group.date}
-                                        </span>
-                                        <span className="bg-slate w-full h-[1px]"></span>
-                                    </div>
-                                )}
                                 {group.messages.map((msg) => (
                                     <MessageBubble
                                         key={msg.messageId}
@@ -583,6 +521,15 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ toggleRightSidebar, righ
                                         messageId={msg.messageId}
                                     />
                                 ))}
+                                {group.date && (
+                                    <div className="flex justify-center my-4 items-center">
+                                        <span className="bg-slate w-full h-[1px]"></span>
+                                        <span className="bg-gray-100 rounded-full px-3 py-1 text-sm text-slate mx-[1px] w-fit">
+                                            {group.date}
+                                        </span>
+                                        <span className="bg-slate w-full h-[1px]"></span>
+                                    </div>
+                                )}
                             </div>
                         ))}
                     </div>

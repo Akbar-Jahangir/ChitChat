@@ -1,15 +1,17 @@
-import { ReactNode } from "react";
-
- 
-
 export interface HeaderProps {
   userInfo: {
-    userId: string;
-    profilePicUrl?: string;
     username: string;
+    profilePicUrl?: string;
     isOnline?: boolean;
+    email?: string;
+    userId?: string;
   };
-  actionIcons: { id: string; icon: ReactNode; type?: string | undefined; onClick?: (() => void) | undefined; }[]
+  actionIcons: {
+    id: string;
+    icon: React.ReactNode;
+    type?: 'search' | 'edit' | 'other';
+    onClick?: () => void;
+  }[];
   searchValue?: string;
   setSearchValue?: React.Dispatch<React.SetStateAction<string>>;
   onSearchIconClick?: () => void;

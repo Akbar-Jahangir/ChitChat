@@ -7,6 +7,7 @@ export const Input: React.FC<InputProps> = ({
   className,
   value,
   accept,
+  disabled=false
 }) => {
   return (
     <input
@@ -16,6 +17,7 @@ export const Input: React.FC<InputProps> = ({
       onChange={onChange}
       value={value}
       accept={accept}
+      disabled={disabled}
     />
   );
 };

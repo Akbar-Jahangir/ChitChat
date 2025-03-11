@@ -5,8 +5,8 @@ import { Sidebar } from "../components/Sidebar";
 import { ChatWindow } from "../components/ChatWindow";
 
 const Chat: React.FC = () => {
-  const { senderId } = useContext(SenderContext);
   const { recipientId } = useContext(RecipientContext);
+  const { senderId } = useContext(SenderContext);
   const navigate = useNavigate();
   const [rightSidebarVisible, setRightSidebarVisible] = useState(false);
 
@@ -14,7 +14,7 @@ const Chat: React.FC = () => {
     if (!senderId) {
       navigate("/signIn");
     }
-  }, [senderId, navigate]);
+  }, []);
 
   const toggleRightSidebar = () => {
     setRightSidebarVisible(prev => !prev);
