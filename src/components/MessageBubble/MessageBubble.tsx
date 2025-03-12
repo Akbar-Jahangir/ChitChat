@@ -130,11 +130,11 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ message
                                     )}
                                 </div>
                             </div>
-                            <img src={senderPicUrl || BlankImg} className="w-[25px] h-[25px] rounded-full" />
+                            <img src={senderPicUrl || BlankImg} className="w-[25px] h-[25px] rounded-full" alt="pic"/>
                         </div>
                     ) : (
                         <div className="flex items-end gap-x-1">
-                            <img src={recipientPicUrl || BlankImg} className="w-[25px] h-[25px] rounded-full" />
+                            <img src={recipientPicUrl || BlankImg} className="w-[25px] h-[25px] rounded-full"  alt="pic"/>
                             <div className="mt-2 max-w-xs">
                                 {/* Container for recipient's messages */}
                                 <div className={`${messageContent && fileUrl ? "bg-lavenderBlue p-2 rounded-[10px] rounded-bl-none" : ""}`}>

@@ -122,16 +122,24 @@ export const Sidebar: React.FC<SidebarProps> = ({ alignment = null, }) => {
   };
 
   useEffect(() => {
-    // Filter media items based on selected media type
-    if (selectedMediaType === "ALL") {
-      setFilteredMediaItems(mediaItems);
-    } else if (selectedMediaType) {
-      const filtered = mediaItems.filter(item =>
-        item.fileType === selectedMediaType
-      );
-      setFilteredMediaItems(filtered);
+    // Filter media items based on selected media type and search value
+    let filtered = mediaItems;
+    
+    // Apply media type filter
+    if (selectedMediaType && selectedMediaType !== "ALL") {
+      filtered = filtered.filter(item => item.fileType === selectedMediaType);
     }
-  }, [selectedMediaType, mediaItems]);
+    
+    // Apply search filter
+    if (searchValue.trim() !== "") {
+      const searchTerm = searchValue.toLowerCase().trim();
+      filtered = filtered.filter(item => 
+        item.fileName?.toLowerCase().includes(searchTerm)
+      );
+    }
+    
+    setFilteredMediaItems(filtered);
+  }, [selectedMediaType, mediaItems, searchValue]);
 
   const handleMediaButtonClick = (mediaType: string) => {
     setSelectedMediaType(mediaType);
@@ -145,13 +153,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ alignment = null, }) => {
   return (
     <>
       {alignment === "left" ? (
-        <div className="w-full lg:w-[27%] flex flex-col items-center bg-smokeWhite space-y-3.5 h-screen p-4 overflow-hidden absolute  lg:static z-50">
-          <div className="w-full flex flex-col items-center space-y-3.5">
+        <div className="w-[100%] lg:w-[27%] flex flex-col items-center bg-smokeWhite space-y-3.5 h-screen py-4 overflow-hidden absolute lg:static z-50">
+          <div className="w-[90%] flex flex-col items-center space-y-3.5">
             <Header userInfo={userInfo} actionIcons={[{ id: "1", icon: <EditIconSvg />,type:"edit" }]} />
             <Searchbar searchValue={searchValue} setSearchValue={setSearchValue} />
-            <span className="h-[1px] w-[95%] bg-lightGray"></span>
+            <span className="h-[1px] w-[100%] bg-lightGray"></span>
           </div>
-          <div className="custom-scrollbar w-full flex flex-col items-center space-y-3.5 overflow-y-auto">
+          <div className="custom-scrollbar w-[100%] flex flex-col items-center space-y-3.5 overflow-y-auto">
             <ChatItem searchValue={searchValue} />
           </div>
         </div>
@@ -161,7 +169,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ alignment = null, }) => {
           <div className="w-full lg:w-[27%] flex flex-col items-center bg-smokeWhite space-y-3.5 h-screen p-4 overflow-hidden absolute  lg:static z-50">
             <div className="flex flex-col items-center space-y-4 md:space-y-6 h-screen w-full">
               <div className="w-full mt-4 md:mt-6">
-                <Searchbar />
+                <Searchbar searchValue={searchValue} setSearchValue={setSearchValue} />
               </div>
               <div className="flex flex-col items-center text-center">
                 <img
@@ -204,14 +212,18 @@ export const Sidebar: React.FC<SidebarProps> = ({ alignment = null, }) => {
                   onClick={handleViewAllClick}
                 />
 
-                {/* Media Display Section with No Media Message */}
+                {/* Media Display Section with No Media Message or Search Results Message */}
                 {selectedMediaType && (
                   <div className="w-full mt-4">
                     {filteredMediaItems.length > 0 ? (
                       <MediaDisplay mediaType={selectedMediaType} mediaItems={filteredMediaItems} />
                     ) : (
                       <div className="text-center py-4">
-                        <p className="text-gray-500">No {selectedMediaType === "ALL" ? "media" : selectedMediaType.toLowerCase()} found</p>
+                        {searchValue.trim() !== "" ? (
+                          <p className="text-gray-500">No matches found for "{searchValue}"</p>
+                        ) : (
+                          <p className="text-gray-500">No {selectedMediaType === "ALL" ? "media" : selectedMediaType.toLowerCase()} found</p>
+                        )}
                       </div>
                     )}
                   </div>
@@ -220,7 +232,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ alignment = null, }) => {
             </div>
           </div>
         )}
-
     </>
   );
 };

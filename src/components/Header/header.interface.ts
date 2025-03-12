@@ -1,16 +1,14 @@
 export interface HeaderProps {
   userInfo: {
+    userId: string;
+    profilePicUrl: string;
     username: string;
-    profilePicUrl?: string;
     isOnline?: boolean;
-    email?: string;
-    userId?: string;
   };
   actionIcons: {
     id: string;
     icon: React.ReactNode;
-    type?: 'search' | 'edit' | 'favorite' |'bell' | 'toggle';
-    onClick?: () => void;
+    type?: string;
   }[];
   searchValue?: string;
   setSearchValue?: React.Dispatch<React.SetStateAction<string>>;
