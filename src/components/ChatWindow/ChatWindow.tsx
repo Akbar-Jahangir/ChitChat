@@ -26,7 +26,7 @@ import { MessageGroup } from "./messageGroup.interface";
 import { PusherMembers } from "./pusherMember.interface";
 
 export const ChatWindow: React.FC<ChatWindowProps> = ({ toggleRightSidebar, rightSidebarVisible }) => {
-    
+
     const [outgoingMessage, setOutgoingMessage] = useState<string>("");
     const [storedMessages, setStoredMessages] = useState<Message[]>([]);
     const [groupedMessages, setGroupedMessages] = useState<MessageGroup[]>([]);
@@ -53,11 +53,11 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ toggleRightSidebar, righ
     const cameraStreamRef = useRef<MediaStream | null>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const prevRecipientIdRef = useRef<string>("");
-    
+
     const { saveMessage, getChatHistory } = useDatabase();
     const { recipientname, recipientId, recipientPicUrl } = useContext(RecipientContext);
     const { senderId } = useContext(SenderContext);
-    
+
     const PUSHER_KEY = "33466c91963fd345d327";
     const PUSHER_CLUSTER = "ap2";
     const SERVER_URL = "https://chit-chat.koyeb.app";
@@ -88,37 +88,37 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ toggleRightSidebar, righ
         const today = new Date();
         const yesterday = new Date(today);
         yesterday.setDate(yesterday.getDate() - 1);
-      
+
         // Reset hours to compare just the dates
         const messageDay = new Date(messageDate.getFullYear(), messageDate.getMonth(), messageDate.getDate());
         const todayDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
         const yesterdayDay = new Date(yesterday.getFullYear(), yesterday.getMonth(), yesterday.getDate());
-      
+
         // We'll use the timestamp at midnight of each day for sorting
         const midnightTimestamp = new Date(
-          messageDate.getFullYear(),
-          messageDate.getMonth(),
-          messageDate.getDate()
+            messageDate.getFullYear(),
+            messageDate.getMonth(),
+            messageDate.getDate()
         ).getTime();
-      
-        if (messageDay.getTime() === todayDay.getTime()) {
-          return { display: "", timestamp: midnightTimestamp }; // Empty string for today - no header will show
-        } else if (messageDay.getTime() === yesterdayDay.getTime()) {
-          return { display: "Yesterday", timestamp: midnightTimestamp };
-        } else {
-          // Format as "3/7/2025" instead of "March 7, 2025"
-          return {
-            display: messageDate.toLocaleDateString('en-US', {
-              year: 'numeric',
-              month: 'numeric',
-              day: 'numeric'
-            }),
-            timestamp: midnightTimestamp
-          };
-        }
-      };
 
-    
+        if (messageDay.getTime() === todayDay.getTime()) {
+            return { display: "", timestamp: midnightTimestamp }; // Empty string for today - no header will show
+        } else if (messageDay.getTime() === yesterdayDay.getTime()) {
+            return { display: "Yesterday", timestamp: midnightTimestamp };
+        } else {
+            // Format as "3/7/2025" instead of "March 7, 2025"
+            return {
+                display: messageDate.toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'numeric',
+                    day: 'numeric'
+                }),
+                timestamp: midnightTimestamp
+            };
+        }
+    };
+
+
     function groupMessagesByDate(messages: Message[]): MessageGroup[] {
         const groups: Record<string, { messages: Message[], timestamp: number }> = {};
 
@@ -144,7 +144,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ toggleRightSidebar, righ
         return `chat-${sortedIds[0]}-${sortedIds[1]}`;
     }
 
-  
+
     async function sendMessageToServer(messageData: Message): Promise<boolean> {
         try {
             const response = await fetch(`${SERVER_URL}/send-message`, {
@@ -221,49 +221,49 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ toggleRightSidebar, righ
     function clearAllFormAndMediaData() {
         // Clear text input
         setOutgoingMessage("");
-        
+
         // Clear file/media states
         setLocalFileUrl("");
         setUploadedFileUrl("");
         setFileName("");
         setFileType("");
         setCapturedPhotoData(null);
-        
+
         // Stop any ongoing uploads
         if (isUploading) {
             setIsUploading(false);
         }
-        
+
         // Clear file input
         if (fileInputRef.current) {
             fileInputRef.current.value = "";
         }
-        
+
         // Close camera if open
         if (isCameraOpen) {
             closeCamera();
         }
-        
+
         // Clear search if any
         setSearchValue("");
     }
-    
+
     function cancelMedia() {
-        // Stop camera if it's active
+       
         if (isCameraOpen) {
             closeCamera();
         }
-        
+
         setLocalFileUrl("");
         setUploadedFileUrl("");
         setFileName("");
         setFileType("");
         setCapturedPhotoData(null);
-        
+
         if (isUploading) {
             setIsUploading(false);
         }
-        
+
         if (fileInputRef.current) {
             fileInputRef.current.value = "";
         }
@@ -330,34 +330,34 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ toggleRightSidebar, righ
 
         const video = videoRef.current;
         const canvas = canvasRef.current;
-        
+
         // Set canvas dimensions to match video
         canvas.width = video.videoWidth;
         canvas.height = video.videoHeight;
-        
+
         // Draw video frame to canvas
         const context = canvas.getContext('2d');
         if (context) {
             context.drawImage(video, 0, 0, canvas.width, canvas.height);
-            
+
             // Get data URL for preview
             const dataURL = canvas.toDataURL('image/jpeg');
             setCapturedPhotoData(dataURL);
             setLocalFileUrl(dataURL);
-            
+
             // Create file name
             const currentDate = new Date();
             const fileName = `Photo_${currentDate.toISOString().replace(/:/g, '-')}.jpg`;
             setFileName(fileName);
             setFileType('image/jpeg');
-            
+
             // Convert canvas to blob for upload
             canvas.toBlob(async (blob) => {
                 if (!blob) return;
-                
+
                 // Create file from blob
                 const file = new File([blob], fileName, { type: 'image/jpeg' });
-                
+
                 try {
                     const fileUrl = await uploadFile(file);
                     setUploadedFileUrl(fileUrl);
@@ -375,7 +375,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ toggleRightSidebar, righ
         setFileName("");
         setFileType("");
         setUploadedFileUrl("");
-        
+
         // Re-initialize camera without closing it
         setIsCameraInitialized(false);
     }
@@ -384,7 +384,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ toggleRightSidebar, righ
         if (type === "camera") {
             openCamera();
         } else {
-         
+
             if (fileInputRef.current) {
                 fileInputRef.current.click();
             }
@@ -396,15 +396,15 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ toggleRightSidebar, righ
 
         const messageText = outgoingMessage.trim();
         if (!messageText && !uploadedFileUrl) return;
-    
-   
+
+
         const MESSAGE_SIZE_LIMIT = 9000;
-        
+
         if (messageText.length > MESSAGE_SIZE_LIMIT) {
             alert(`Message too large. Please limit your message to ${MESSAGE_SIZE_LIMIT} characters.`);
             return;
         }
-    
+
         const messageData: Message = {
             messageId: uid(),
             recipientId: recipientId,
@@ -425,7 +425,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ toggleRightSidebar, righ
             setFileName("");
             setFileType("");
             setCapturedPhotoData(null);
-            
+
             // Close camera after message is sent
             if (isCameraOpen) {
                 closeCamera();
@@ -436,7 +436,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ toggleRightSidebar, righ
     function handleClearSearch() {
         setSearchValue("");
     }
-  
+
     function cleanupPusher() {
         // Clear heartbeat interval
         if (heartbeatIntervalRef.current) {
@@ -557,15 +557,15 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ toggleRightSidebar, righ
                     if (cameraStreamRef.current) {
                         cameraStreamRef.current.getTracks().forEach(track => track.stop());
                     }
-    
+
                     // Get access to camera
                     const stream = await navigator.mediaDevices.getUserMedia({
                         video: { facingMode: "environment" }, // Use rear camera if available
                         audio: false
                     });
-                    
+
                     cameraStreamRef.current = stream;
-    
+
                     // Set the stream to the video element
                     if (videoRef.current) {
                         videoRef.current.srcObject = stream;
@@ -578,7 +578,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ toggleRightSidebar, righ
                     console.error("Error accessing camera:", error);
                     alert("Could not access camera. Please check camera permissions.");
                     closeCamera();
-                    
+
                     // Fall back to file input if camera fails
                     if (fileInputRef.current) {
                         fileInputRef.current.click();
@@ -597,24 +597,24 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ toggleRightSidebar, righ
             // Clear all form and media data when switching to a different recipient
             clearAllFormAndMediaData();
         }
-              // Update the ref with current recipientId for next comparison
-              prevRecipientIdRef.current = recipientId;
-              (async () => {
-                try {
-                    const allMessages = await getChatHistory(senderId, recipientId);
-                    const filteredMessages = allMessages.filter(
-                        (msg) =>
-                            (msg.senderId === senderId && msg.recipientId === recipientId) ||
-                            (msg.senderId === recipientId && msg.recipientId === senderId)
-                    );
-    
-                    filteredMessages.sort((a, b) => a.timestamp - b.timestamp);
-                    setStoredMessages(filteredMessages);
-                } catch (error) {
-                    console.error("Error fetching messages:", error);
-                }
-            })();
-        
+        // Update the ref with current recipientId for next comparison
+        prevRecipientIdRef.current = recipientId;
+        (async () => {
+            try {
+                const allMessages = await getChatHistory(senderId, recipientId);
+                const filteredMessages = allMessages.filter(
+                    (msg) =>
+                        (msg.senderId === senderId && msg.recipientId === recipientId) ||
+                        (msg.senderId === recipientId && msg.recipientId === senderId)
+                );
+
+                filteredMessages.sort((a, b) => a.timestamp - b.timestamp);
+                setStoredMessages(filteredMessages);
+            } catch (error) {
+                console.error("Error fetching messages:", error);
+            }
+        })();
+
         cleanupPusher();
 
         pusherRef.current = new Pusher(PUSHER_KEY, {
@@ -629,7 +629,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ toggleRightSidebar, righ
         });
 
         pusherRef.current.connection.bind('connected', () => {
-           
+
             updatePresence("join", true).catch(error => {
                 console.error("Error updating presence on connection:", error);
             });
@@ -682,7 +682,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ toggleRightSidebar, righ
         return () => {
             cleanupPusher();
             window.removeEventListener("beforeunload", handleBeforeUnload);
-            
+
             // Also make sure to close camera if component unmounts
             if (cameraStreamRef.current) {
                 cameraStreamRef.current.getTracks().forEach(track => track.stop());
@@ -760,7 +760,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ toggleRightSidebar, righ
                         <div ref={messagesEndRef} />
                     </div>
                 </div>
-                
+
                 {/* Camera UI */}
                 {isCameraOpen && (
                     <div className="fixed inset-0 bg-black bg-opacity-90 z-50 flex flex-col items-center justify-center">
@@ -768,72 +768,66 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ toggleRightSidebar, righ
                             // Show captured photo preview
                             <div className="flex flex-col items-center w-full">
                                 <div className="relative w-full max-w-lg">
-                                    <img 
-                                        src={capturedPhotoData} 
-                                        alt="Captured" 
+                                    <img
+                                        src={capturedPhotoData}
+                                        alt="Captured"
                                         className="w-full h-auto"
                                     />
                                 </div>
                                 <div className="flex justify-center mt-4 w-full">
-                                    <button 
+                                    <Button
+                                        type="button"
                                         onClick={discardCapturedPhoto}
-                                        className="bg-red-500 text-white rounded-full px-4 py-2 m-2"
-                                    >
-                                        Retake
-                                    </button>
-                                    <button 
+                                        btnText="Retake"
+                                        className="bg-red-500 text-white rounded-full px-4 py-2 m-2" />
+                                    <Button
+                                        type="reset"
                                         onClick={closeCamera}
-                                        className="bg-green-500 text-white rounded-full px-4 py-2 m-2"
-                                    >
-                                        Use Photo
-                                    </button>
+                                        btnText="  Use Photo"
+                                        className="bg-green-500 text-white rounded-full px-4 py-2 m-2" />
                                 </div>
                             </div>
                         ) : (
-                            // Show camera viewfinder
+
                             <>
                                 <div className="relative w-full max-w-lg">
-                                    <video 
+                                    <video
                                         ref={videoRef}
-                                        autoPlay 
-                                        playsInline 
+                                        autoPlay
+                                        playsInline
                                         className="w-full h-auto"
                                         style={{ objectFit: 'cover' }}
                                     />
                                     <canvas ref={canvasRef} className="hidden" />
                                 </div>
                                 <div className="flex justify-center mt-4 w-full">
-                                    <button 
+                                    <Button
                                         onClick={capturePhoto}
-                                        className="bg-white rounded-full w-16 h-16 flex items-center justify-center m-2"
-                                    >
-                                        <div className="bg-white border-4 border-gray-500 rounded-full w-12 h-12"></div>
-                                    </button>
-                                    <button 
+                                        type="button"
+                                        className="bg-white rounded-full w-16 h-16 flex items-center justify-center m-2" />
+                                    <Button
+                                        type="button"
                                         onClick={closeCamera}
-                                        className="bg-red-500 text-white rounded-full px-4 py-2 flex items-center justify-center m-2"
-                                    >
-                                       Cancel
-                                    </button>
+                                        className="bg-red-500 text-white rounded-full px-4 py-2 flex items-center justify-center m-2" icon={<div className="bg-white border-4 border-gray-500 rounded-full w-12 h-12"></div>} />
                                 </div>
                             </>
                         )}
                     </div>
                 )}
-                
+
                 {/* File Preview - Show only when camera is not open */}
                 {localFileUrl && !isCameraOpen && (
                     <div className="mb-16 bg-lavenderBlue w-full flex justify-center pt-2 relative">
                         <FilePreview fileUrl={localFileUrl} fileName={fileName} />
-                        
+
                         <Button
                             type="button"
                             onClick={cancelMedia}
                             className="absolute top-2 right-2 rounded border w-8 h-8 flex items-center justify-center"
                             aria-label="Cancel file upload"
-                           btnText="✕"
+                            btnText="✕"
                         />
-                        
+
                         {/* Loading indicator for uploads */}
                         {isUploading && (
                             <div className="absolute inset-0 bg-gray bg-opacity-50 flex items-center justify-center">
@@ -861,8 +855,8 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ toggleRightSidebar, righ
                             <div className="border-l border-slate flex items-center my-1">
                                 {messageTypeBtnData.map((data) => (
                                     data.type === "camera" ? (
-                                        <div 
-                                            key={data.id} 
+                                        <div
+                                            key={data.id}
                                             className="cursor-pointer mx-1"
                                             onClick={() => handleMediaButtonClick("camera")}
                                         >
@@ -871,12 +865,12 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ toggleRightSidebar, righ
                                     ) : (
                                         <label key={data.id} className="cursor-pointer mx-1">
                                             {data.icon}
-                                            <Input 
-                                                ref={fileInputRef} 
-                                                type="file" 
-                                                accept={data.accept} 
-                                                onChange={handleFileChange} 
-                                                className="hidden" 
+                                            <Input
+                                                ref={fileInputRef}
+                                                type="file"
+                                                accept={data.accept}
+                                                onChange={handleFileChange}
+                                                className="hidden"
                                             />
                                         </label>
                                     )
