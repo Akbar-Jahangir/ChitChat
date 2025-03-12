@@ -4,6 +4,7 @@ import { MessageBubbleProps } from "./messageBubble.interface";
 import { SenderContext, RecipientContext } from "../../contexts/ChatContext";
 import { DocsThumbnailSvg, PdfThumbnailSvg, PowerPointThumbnailSvg, XcelThumbnailSvg } from "../Svgs";
 import { isAudio, isDocument, isExcel, isImage, isPdf, isPowerPoint, isVideo } from "../../utils/fileExtensionChecker";
+import { Button } from "../Button";
 
 export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ messageContent, senderId, fileUrl, fileName }) => {
     const [isExpanded, setIsExpanded] = useState<boolean>(false);
@@ -123,9 +124,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ message
                                                 ? messageContent
                                                 : `${messageContent.slice(0, maxChars)} `}
                                             {messageContent.length > maxChars && (
-                                                <button onClick={toggleReadMore} className="text-smokeWhite text-sm">
-                                                    {isExpanded ? "Read less" : "Read more"}
-                                                </button>
+                                                <Button type="button" onClick={toggleReadMore} btnText={`${isExpanded ? "Read less" : "Read more"}`} className="text-smokeWhite text-sm" />
                                             )}
                                         </div>
                                     )}
@@ -230,9 +229,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ message
                                                 ? messageContent
                                                 : `${messageContent.slice(0, maxChars)} `}
                                             {messageContent.length > maxChars && (
-                                                <button onClick={toggleReadMore} className="text-primary text-sm">
-                                                    {isExpanded ? "Read less" : "Read more"}
-                                                </button>
+                                                <Button type="button" onClick={toggleReadMore} btnText={`${isExpanded ? "Read less" : "Read more"}`} className="text-primary text-sm" />
                                             )}
                                         </div>
                                     )}

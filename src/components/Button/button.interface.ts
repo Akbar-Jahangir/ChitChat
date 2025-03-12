@@ -5,7 +5,7 @@ export interface ButtonProps {
   iconClass?: string;
   btnText?: string;
   className?: string;
-  type: "button" | "submit" | "reset";
+  type?: "button" | "submit" | "reset";
   onClick?: () => void;
   disabled?: boolean;
 }
