@@ -34,12 +34,12 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ toggleRightSidebar, righ
         isUploading,
         showNotification,
         notificationMessage,
-        
+
         // Refs
         fileInputRef,
         messagesEndRef,
         userInfo,
-        
+
         // Functions
         handleFileChange,
         closeCamera,
@@ -75,18 +75,18 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ toggleRightSidebar, righ
                         <div className="flex-1 mr-2">
                             <p className="font-semibold text-sm">{notificationMessage}</p>
                         </div>
-                        <Button 
+                        <Button
                             onClick={handleDismissNotification}
                             btnText="✕"
                             className="text-white hover:text-gray-200 focus:outline-none"
-                            aria-label="Dismiss notification"/>
+                            aria-label="Dismiss notification" />
                     </div>
                 </div>
             )}
-            
+
             {/* Hidden audio element for notification sound */}
-            <audio  preload="auto" />
-            
+            <audio preload="auto" />
+
             <div className="w-[100%] flex flex-col items-center relative h-full">
                 <div className="w-[95%] sticky top-0 bg-white z-10">
                     <Header
@@ -137,7 +137,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ toggleRightSidebar, righ
                     </div>
                 </div>
                 {isCameraOpen && (
-                    <Camera 
+                    <Camera
                         onCapture={handleCapturedPhoto}
                         onClose={closeCamera}
                     />

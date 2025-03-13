@@ -35,7 +35,7 @@ export function useHelper() {
     const [isUploading, setIsUploading] = useState<boolean>(false);
     const [showNotification, setShowNotification] = useState<boolean>(false);
     const [notificationMessage, setNotificationMessage] = useState<string>("");
-    
+
     // Refs
     const pusherRef = useRef<Pusher | null>(null);
     const messageChannelRef = useRef<Channel | null>(null);
@@ -89,20 +89,20 @@ export function useHelper() {
         const senderName = recipientname || 'Someone';
         const messageContent = message.messageContent || (message.fileUrl ? 'Sent an attachment' : 'New message');
         const shortMessage = messageContent.length > 40 ? `${messageContent.substring(0, 40)}...` : messageContent;
-        
+
         setNotificationMessage(`${senderName}: ${shortMessage}`);
         setShowNotification(true);
-        
+
         // Clear any existing timeout
         if (notificationTimeout.current) {
             clearTimeout(notificationTimeout.current);
         }
-        
+
         // Auto-hide notification after 5 seconds
         const timeout = setTimeout(() => {
             setShowNotification(false);
         }, 5000);
-        
+
         notificationTimeout.current = timeout;
 
         // Show browser notification if permission granted
@@ -112,12 +112,12 @@ export function useHelper() {
                     body: `${senderName}: ${shortMessage}`,
                     icon: recipientPicUrl || '/favicon.ico'
                 });
-                
+
                 notification.onclick = () => {
                     window.focus();
                     notification.close();
                 };
-                
+
                 // Auto-close notification after 5 seconds
                 setTimeout(() => notification.close(), 5000);
             } catch (error) {
@@ -508,7 +508,7 @@ export function useHelper() {
         };
 
         document.addEventListener('visibilitychange', handleVisibilityChange);
-        
+
         return () => {
             document.removeEventListener('visibilitychange', handleVisibilityChange);
         };
@@ -518,7 +518,7 @@ export function useHelper() {
     useEffect(() => {
         // Create audio element for notification sound
         audioRef.current = new Audio('/notification-alert.mp3');
-        
+
         // Request notification permission when component mounts
         requestNotificationPermission();
 
@@ -542,12 +542,12 @@ export function useHelper() {
         }
         // Update the ref with current recipientId for next comparison
         prevRecipientIdRef.current = recipientId;
-        
+
         (async () => {
             try {
                 const allMessages = await getChatHistory(senderId, recipientId);
                 const filteredMessages = allMessages.filter(
-                    (msg:Message) =>
+                    (msg: Message) =>
                         (msg.senderId === senderId && msg.recipientId === recipientId) ||
                         (msg.senderId === recipientId && msg.recipientId === senderId)
                 );
@@ -595,7 +595,7 @@ export function useHelper() {
                 setupPusher();
             }, 5000);
         });
-        
+
         setupPusher();
 
         // Set up heartbeat and status checking
@@ -674,14 +674,10 @@ export function useHelper() {
         isUploading,
         showNotification,
         notificationMessage,
-        
-        // Refs
         fileInputRef,
         messagesEndRef,
-        
-        // User info
         userInfo,
-        
+
         // Functions
         handleFileChange,
         openCamera,
