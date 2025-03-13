@@ -38,8 +38,6 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ toggleRightSidebar, righ
         // Refs
         fileInputRef,
         messagesEndRef,
-        
-        // User info
         userInfo,
         
         // Functions
@@ -53,7 +51,6 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ toggleRightSidebar, righ
         cancelMedia
     } = useHelper();
 
-    // Icon component for sidebar toggle
     const SidebarToggleIcon = () => (
         <div
             onClick={toggleRightSidebar}
@@ -157,7 +154,6 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ toggleRightSidebar, righ
                             btnText="✕"
                         />
 
-                        {/* Loading indicator for uploads */}
                         {isUploading && (
                             <div className="absolute inset-0 bg-gray bg-opacity-50 flex items-center justify-center">
                                 <div className="loader w-10 h-10 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>

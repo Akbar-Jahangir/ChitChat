@@ -27,6 +27,7 @@ export function useHelper() {
     const [uploadedFileUrl, setUploadedFileUrl] = useState<string>("");
     const [fileName, setFileName] = useState<string>("");
     const [fileType, setFileType] = useState<string>("");
+    const [selectedFile, setSelectedFile] = useState<File | null>(null); // Store the selected file
     const [isRecipientOnline, setIsRecipientOnline] = useState<boolean>(false);
     const [searchValue, setSearchValue] = useState<string>("");
     const [filteredMessages, setFilteredMessages] = useState<Message[]>([]);
@@ -34,7 +35,7 @@ export function useHelper() {
     const [isUploading, setIsUploading] = useState<boolean>(false);
     const [showNotification, setShowNotification] = useState<boolean>(false);
     const [notificationMessage, setNotificationMessage] = useState<string>("");
-
+    
     // Refs
     const pusherRef = useRef<Pusher | null>(null);
     const messageChannelRef = useRef<Channel | null>(null);
@@ -48,8 +49,6 @@ export function useHelper() {
     const audioRef = useRef<HTMLAudioElement | null>(null);
     const notificationPermissionRef = useRef<boolean>(false);
     const notificationTimeout = useRef<NodeJS.Timeout | null>(null);
-
-    // User info object
     const userInfo = {
         userId: recipientId,
         profilePicUrl: recipientPicUrl,
@@ -204,32 +203,22 @@ export function useHelper() {
 
     // Clear all form and media data
     const clearAllFormAndMediaData = () => {
-        // Clear text input
         setOutgoingMessage("");
-
-        // Clear file/media states
         setLocalFileUrl("");
         setUploadedFileUrl("");
         setFileName("");
         setFileType("");
-
-        // Stop any ongoing uploads
+        setSelectedFile(null);
+        setSearchValue("");
         if (isUploading) {
             setIsUploading(false);
         }
-
-        // Clear file input
         if (fileInputRef.current) {
             fileInputRef.current.value = "";
         }
-
-        // Close camera if open
         if (isCameraOpen) {
             closeCamera();
         }
-
-        // Clear search if any
-        setSearchValue("");
     };
 
     // Cancel media upload or capture
@@ -237,11 +226,11 @@ export function useHelper() {
         if (isCameraOpen) {
             closeCamera();
         }
-
         setLocalFileUrl("");
         setUploadedFileUrl("");
         setFileName("");
         setFileType("");
+        setSelectedFile(null);
 
         if (isUploading) {
             setIsUploading(false);
@@ -252,7 +241,6 @@ export function useHelper() {
         }
     };
 
-    // Upload file to storage
     const uploadFile = async (file: File): Promise<string> => {
         try {
             setIsUploading(true);
@@ -274,21 +262,12 @@ export function useHelper() {
 
         if (!file) return;
 
+        // Just store the selected file and show preview, without uploading
         const url = URL.createObjectURL(file);
         setLocalFileUrl(url);
         setFileName(file.name);
         setFileType(file.type);
-
-        try {
-            const fileUrl = await uploadFile(file);
-            setUploadedFileUrl(fileUrl);
-        } catch (error) {
-            console.error("Error uploading file:", error);
-            alert("Failed to upload file. Please try again.");
-            setLocalFileUrl("");
-            setFileName("");
-            setFileType("");
-        }
+        setSelectedFile(file); // Save the file for later upload
 
         e.target.value = "";
     };
@@ -307,17 +286,15 @@ export function useHelper() {
         setFileName(fileName);
         setFileType('image/jpeg');
 
+        // Convert data URL to blob and store for later upload
         try {
-            // Convert data URL to blob
             const blob = await dataUrlToBlob(dataURL);
-            // Create file from blob
+            // Create file from blob and store it
             const file = blobToFile(blob, fileName);
-            // Upload the file
-            const fileUrl = await uploadFile(file);
-            setUploadedFileUrl(fileUrl);
+            setSelectedFile(file);
         } catch (error) {
-            console.error("Error uploading captured photo:", error);
-            alert("Failed to upload photo. Please try again.");
+            console.error("Error processing captured photo:", error);
+            alert("Failed to process photo. Please try again.");
         }
 
         closeCamera();
@@ -338,7 +315,7 @@ export function useHelper() {
         e.preventDefault();
 
         const messageText = outgoingMessage.trim();
-        if (!messageText && !uploadedFileUrl) return;
+        if (!messageText && !selectedFile) return;
 
         const MESSAGE_SIZE_LIMIT = 9000;
 
@@ -347,13 +324,26 @@ export function useHelper() {
             return;
         }
 
+        // Upload the file now if there is one
+        let fileUrl = '';
+        if (selectedFile) {
+            try {
+                fileUrl = await uploadFile(selectedFile);
+                setUploadedFileUrl(fileUrl);
+            } catch (error) {
+                console.error("Error uploading file:", error);
+                alert("Failed to upload file. Please try again.");
+                return;
+            }
+        }
+
         const messageData: Message = {
             messageId: uid(),
             recipientId: recipientId,
             senderId: senderId,
             messageContent: messageText,
             timestamp: Date.now(),
-            fileUrl: uploadedFileUrl,
+            fileUrl: fileUrl,
             fileName: fileName,
             fileType: fileType
         };
@@ -366,6 +356,7 @@ export function useHelper() {
             setLocalFileUrl("");
             setFileName("");
             setFileType("");
+            setSelectedFile(null);
 
             // Close camera after message is sent
             if (isCameraOpen) {

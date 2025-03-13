@@ -197,12 +197,12 @@ export const ChatItem: React.FC<ChatItemProps> = React.memo(({ searchValue }) =>
 
         return (
           <div
-            className={`w-[90%] flex flex-col items-center rounded-sm py-2 cursor-pointer ${activeChatId === user.userId ? "bg-slate" : "hover:bg-slate"
+            className={`w-[100%] flex flex-col items-center rounded-sm py-2 cursor-pointer ${activeChatId === user.userId ? "bg-slate" : "hover:bg-slate"
               }`}
             key={user.userId}
             onClick={() => handleClick(user.userId, user.username, user.profilePicUrl)}
           >
-            <div className="flex w-[100%] justify-between gap-2">
+            <div className="flex w-[90%] justify-between gap-2">
               <div className="w-fit">
                 <div
                   className="max-w-11 max-h-11 min-w-11 min-h-11 rounded-full bg-cover bg-center"
