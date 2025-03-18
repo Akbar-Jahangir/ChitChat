@@ -7,7 +7,7 @@ import { storage } from "../utils/firebaseConfig";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { uid } from "uid";
 import { toast } from "react-toastify";
-import { RecipientContext, SenderContext } from "../contexts/ChatContext";
+import { SenderContext } from "../contexts/ChatContext";
 import {
   collection,
   doc,
@@ -33,8 +33,6 @@ import { db,query, where, getDocs } from "../utils/firebaseConfig";
   const [loading, setLoading] = useState<boolean>(false);
   const navigate = useNavigate();
   const { senderId, setSendername, setSenderPicUrl,setSenderId } = useContext(SenderContext);
-  const {setRecipientId}=useContext(RecipientContext)
-
   const location = useLocation();
   const isEditMode = location.state?.isEditMode || false;
   const getUserById = async (userId: string) => {
@@ -64,7 +62,6 @@ import { db,query, where, getDocs } from "../utils/firebaseConfig";
   useEffect(() => {
     const fetchUserData = async () => {
       if (isEditMode && senderId) {
-        // setLoading(true);
         try {
           const user = await getUserById(senderId);
           if (user) {
@@ -88,7 +85,6 @@ import { db,query, where, getDocs } from "../utils/firebaseConfig";
 
     fetchUserData();
   }, []);
-
 
   const uploadImageAndGetURL = async (file: File) => {
     const storageRef = ref(storage, `userProfilePics/${uid()}`);
@@ -246,8 +242,8 @@ import { db,query, where, getDocs } from "../utils/firebaseConfig";
         }
 
         toast.success("Profile updated successfully!");
-        navigate("/signIn")
-        setRecipientId("")
+        setSenderId("")
+        navigate(-1)
       } else {
         // Register new user
         const userData = {
@@ -394,4 +390,3 @@ import { db,query, where, getDocs } from "../utils/firebaseConfig";
   );
 };
 export default SignUp
-
