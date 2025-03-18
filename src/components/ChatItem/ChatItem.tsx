@@ -1,16 +1,19 @@
 import React, { useContext, useMemo, useState, useCallback, useEffect, useRef } from "react";
 import { TikMarkIconSvg } from "../Svgs";
 import { ChatUserProps } from "../../interfaces/chatUser.interface";
-import useDatabase from "../../hooks/useDatabase";
 import { RecipientContext, SenderContext } from "../../contexts/ChatContext";
 import { Message } from "../../interfaces/message.interface";
 import BlankImg from "../../assets/Images/BlankImg.png"
 import { ChatItemProps } from "./chatItem.interface";
+import { db, getDocs } from "../../utils/firebaseConfig";
+import {
+  collection,
+} from "firebase/firestore";
 
 export const ChatItem: React.FC<ChatItemProps> = React.memo(({ searchValue }) => {
-  const { storedUsers, getAllMessages } = useDatabase();
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
+  const [storedUsers, setStoredUsers] = useState<ChatUserProps[]>([]);
 
   // Track the last seen message timestamp for each chat
   const [lastSeenTimestamps, setLastSeenTimestamps] = useState<Record<string, number>>({});
@@ -18,9 +21,50 @@ export const ChatItem: React.FC<ChatItemProps> = React.memo(({ searchValue }) =>
   const { setRecipientname, setRecipientId, setRecipientPicUrl } = useContext(RecipientContext);
   const { senderId } = useContext(SenderContext);
 
-  // Prevent getAllMessages from causing re-renders
-  const getAllMessagesRef = useRef(getAllMessages);
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const usersCollection = collection(db, "users");
+        const usersSnapshot = await getDocs(usersCollection);
+        const usersList = usersSnapshot.docs.map((doc) => {
+          const data = doc.data();
+          return {
+            id: doc.id,
+            userId: data.userId,
+            username: data.username,
+            profilePicUrl: data.profilePicUrl,
+            email: data.email,
+          } as ChatUserProps;
+        });
+        setStoredUsers(usersList);
+      } catch (error) {
+        console.error("Error fetching users:", error);
+      }
+    };
 
+    fetchUsers();
+  }, []);
+  const getAllMessages = async (): Promise<Message[]> => {
+    try {
+      const conversationsRef = collection(db, "conversations");
+
+      const querySnapshot = await getDocs(conversationsRef);
+
+      const messages: Message[] = [];
+      querySnapshot.forEach((doc) => {
+        const conversation = doc.data();
+        if (conversation.messages) {
+          messages.push(...conversation.messages);
+        }
+      });
+
+      return messages;
+    } catch (error) {
+      console.error("Error fetching messages:", error);
+      return [];
+    }
+  };
+  const getAllMessagesRef = useRef(getAllMessages);
 
   const memoizedUsers = useMemo(() => storedUsers, [storedUsers]);
 
@@ -212,8 +256,8 @@ export const ChatItem: React.FC<ChatItemProps> = React.memo(({ searchValue }) =>
 
               <div className="w-full">
                 <div className="flex justify-between w-full">
-                  <p className="text-sm font-semibold text-primary w-[55%] truncate">{user.username}</p>
-                  {lastMessage && <p className="text-lightSlate text-xs self-center w-[30%] text-end">{formatChatListTimestamp(lastMessage.timestamp)}</p>}
+                  <p className="text-sm font-semibold text-primary max-w-[50%] line-clamp-2">{user.username}</p>
+                  {lastMessage && <p className="text-lightSlate text-xs self-center w-fit ">{formatChatListTimestamp(lastMessage.timestamp)}</p>}
                 </div>
 
                 <div className="flex justify-between w-full">

@@ -50,6 +50,27 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ toggleRightSidebar, righ
         handleClearSearch,
         cancelMedia
     } = useHelper();
+    
+    // Add a new state to track if message is being sent
+    const [isSending, setIsSending] = React.useState(false);
+
+    // Modify the submit handler to disable the button while sending
+    const handleSubmitWithDisable = async (e: React.FormEvent<Element>) => {
+        e.preventDefault();
+        
+        // Don't submit if already sending or if the message is empty
+        if (isSending || (!outgoingMessage.trim() && !localFileUrl)) return;
+        
+        // Set sending state to true
+        setIsSending(true);
+        
+        try {
+            // Call the original submit handler
+            await handleSubmit(e);
+        } finally {
+            setTimeout(() => setIsSending(false), 500);
+        }
+    };
 
     const SidebarToggleIcon = () => (
         <div
@@ -60,7 +81,6 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ toggleRightSidebar, righ
         </div>
     );
 
-    // Message type buttons data
     const messageTypeBtnData = [
         { id: 1, icon: <AttachmentIconSvg />, accept: "image/*,video/*,.mp3,.pdf,.docx,.xlsx,.ppt,.pptx,.ppsx" },
         { id: 2, icon: <CameraIconSvg />, type: "camera" },
@@ -68,7 +88,6 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ toggleRightSidebar, righ
 
     return (
         <div className={`w-full lg:w-auto flex-grow transition-all duration-300 bg-white h-screen relative`}>
-            {/* In-app notification */}
             {showNotification && (
                 <div className="fixed top-4 right-4 max-w-xs bg-primary text-white p-4 rounded-lg shadow-lg z-50 animate-fadeIn">
                     <div className="flex justify-between items-start">
@@ -83,8 +102,6 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ toggleRightSidebar, righ
                     </div>
                 </div>
             )}
-
-            {/* Hidden audio element for notification sound */}
             <audio preload="auto" />
 
             <div className="w-[100%] flex flex-col items-center relative h-full">
@@ -162,33 +179,39 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ toggleRightSidebar, righ
                     </div>
                 )}
                 <div className="bg-lavenderBlue w-full flex flex-col items-center justify-center py-1 absolute bottom-0">
-                    <form onSubmit={handleSubmit} className="w-[95%] flex gap-x-2 px-3 items-center py-2 ">
+                    <form onSubmit={handleSubmitWithDisable} className="w-[95%] flex gap-x-2 px-3 items-center py-2 ">
                         <div className="w-[95%] bg-white flex items-end rounded-full px-3 ">
-                            <Button type="submit" icon={<VoiceIconSvg />} className="mr-2 my-1" />
+                            <Button 
+                                type="button" 
+                                icon={<VoiceIconSvg />} 
+                                className="mr-2 my-1"
+                                disabled={isSending} 
+                            />
                             <Textarea
                                 value={outgoingMessage}
                                 placeholder="Write something..."
                                 onChange={(e) => setOutgoingMessage(e.target.value)}
                                 onKeyDown={(e) => {
-                                    if (e.key === "Enter" && !e.shiftKey) {
+                                    if (e.key === "Enter" && !e.shiftKey && !isSending) {
                                         e.preventDefault();
-                                        handleSubmit(e);
+                                        handleSubmitWithDisable(e);
                                     }
                                 }}
                                 className="w-[90%] px-2 mb-2"
+                                disabled={isSending}
                             />
                             <div className="border-l border-slate flex items-center my-1">
                                 {messageTypeBtnData.map((data) => (
                                     data.type === "camera" ? (
                                         <div
                                             key={data.id}
-                                            className="cursor-pointer mx-1"
-                                            onClick={() => handleMediaButtonClick("camera")}
+                                            className={`cursor-pointer mx-1 ${isSending ? 'opacity-50 pointer-events-none' : ''}`}
+                                            onClick={() => !isSending && handleMediaButtonClick("camera")}
                                         >
                                             {data.icon}
                                         </div>
                                     ) : (
-                                        <label key={data.id} className="cursor-pointer mx-1">
+                                        <label key={data.id} className={`cursor-pointer mx-1 ${isSending ? 'opacity-50 pointer-events-none' : ''}`}>
                                             {data.icon}
                                             <Input
                                                 ref={fileInputRef}
@@ -196,13 +219,19 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ toggleRightSidebar, righ
                                                 accept={data.accept}
                                                 onChange={handleFileChange}
                                                 className="hidden"
+                                                disabled={isSending}
                                             />
                                         </label>
                                     )
                                 ))}
                             </div>
                         </div>
-                        <Button type="submit" icon={<SendMessageIconSvg />} className="bg-primary w-10 h-10 rounded-full flex items-center p-2" />
+                        <Button 
+                            type="submit" 
+                            icon={<SendMessageIconSvg />} 
+                            className={`bg-primary w-10 h-10 rounded-full flex items-center p-2 ${isSending ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            disabled={isSending}
+                        />
                     </form>
                 </div>
             </div>

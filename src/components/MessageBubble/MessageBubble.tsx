@@ -147,7 +147,7 @@ export const MessageBubble: React.FC<MessageBubbleProps> = React.memo(({ message
                                                 onClick={() => setSelectedImage(fileUrl)}
                                             />
                                         ) : isVideo(fileName!) ? (
-                                            <video controls className={`rounded-lg max-w-[300px] ${messageContent ? "mb-2" : ""}`}>
+                                            <video controls className={`rounded-alg max-w-[300px] ${messageContent ? "mb-2" : ""}`}>
                                                 <source src={fileUrl} type="video/mp4" />
                                                 Your browser does not support the video tag.
                                             </video>

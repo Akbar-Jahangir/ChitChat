@@ -17,10 +17,9 @@ import {
 import { SenderContext, RecipientContext } from "../../contexts/ChatContext";
 import { SidebarProps } from "./sidebar.interface";
 import BlankImg from "../../assets/Images/BlankImg.png"
-import useDatabase from "../../hooks/useDatabase";
 import { MediaDisplay } from "../MediaDisplay";
 import { Message } from "../../interfaces/message.interface";
-
+import getChatHistory from "../../utils/getChatHistory";
 
 export const Sidebar: React.FC<SidebarProps> = ({ alignment = null, }) => {
   const [searchValue, setSearchValue] = useState("");
@@ -30,7 +29,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ alignment = null, }) => {
   const [isRightSidebar, setIsRightSidebar] = useState<boolean>(true)
   const { sendername, senderId, senderPicUrl } = useContext(SenderContext);
   const { recipientId, recipientname, recipientPicUrl } = useContext(RecipientContext);
-  const { getChatHistory } = useDatabase();
   const userInfo = {
     userId: senderId,
     profilePicUrl: senderPicUrl,

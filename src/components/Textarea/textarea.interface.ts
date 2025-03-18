@@ -4,4 +4,5 @@ export interface TextareaProps {
     value?: string;
     onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
     onKeyDown?: (e: React.KeyboardEvent<HTMLTextAreaElement>) => void;
+    disabled?: boolean;
 }

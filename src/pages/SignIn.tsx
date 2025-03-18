@@ -1,9 +1,13 @@
-import React, { useState } from "react";
+import React, { useContext, useState } from "react";
 import { Input } from "../components/Input";
 import { Button } from "../components/Button";
 import { useNavigate } from "react-router-dom";
-import useDatabase from "../hooks/useDatabase";
 import { toast } from "react-toastify";
+import { db, query, where, getDocs } from "../utils/firebaseConfig";
+import {
+  collection,
+} from "firebase/firestore";
+import { SenderContext } from "../contexts/ChatContext";
 
 const SignIn: React.FC = () => {
   const [email, setEmail] = useState<string>("");
@@ -12,59 +16,73 @@ const SignIn: React.FC = () => {
   const [isPassword, setIsPassword] = useState<boolean>(true);
   const [loading, setLoading] = useState<boolean>(false);
 
-  const { login } = useDatabase();
   const navigate = useNavigate();
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!email.trim()) {
-      toast.error("Please provide your email address.");
-      return;
-    } else {
-      setIsEmail(true);
-    }
-    if (!password.trim()) {
-      toast.error("Please provide your password.");
-      return;
-    } else {
-      setIsPassword(true);
-    }
-
-    setLoading(true);
-    
-    // Check internet connection before attempting login
-    if (!navigator.onLine) {
-      toast.error("No internet connection. Please check your network and try again.");
-      setLoading(false);
-      return;
-    }
-    
-    try {
-      // Set a timeout to detect slow connections
-      const loginPromise = login(email, password);
-      const timeoutPromise = new Promise((_, reject) => {
-        setTimeout(() => reject(new Error("Connection timeout")), 10000); // 10 second timeout
-      });
+    const { setSendername, setSenderId, setSenderPicUrl } =
+      useContext(SenderContext);
+      const authenticateUserCredentials = async (email: string, password: string) => {
+        try {
+          const usersRef = collection(db, "users");
+          const q = query(usersRef, where("email", "==", email));
+          const querySnapshot = await getDocs(q);
       
-      await Promise.race([loginPromise, timeoutPromise]);
-      navigate("/chat");
-    } catch (error) {
-      // Handle different types of errors
-      if (!navigator.onLine) {
-        toast.error("Internet connection lost. Please check your network.");
-      } else if (error instanceof Error && error.message === "Connection timeout") {
-        toast.error("Connection is too slow. Please check your internet connection.");
-      } else if (error instanceof Error && error.message.includes("network")) {
-        toast.error("Network error. Please check your internet connection and try again.");
-      } else {
-        toast.error("Login failed. Please check your credentials.");
-      }
-      console.error("Login error:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+          if (querySnapshot.empty) {
+            toast.error("Email does not exist");
+            return false; // Indicate login failure
+          }
+      
+          const userData = querySnapshot.docs[0].data();
+      
+          if (userData.password !== password) {
+            toast.error("Incorrect password. Please try again.");
+            return false;
+          }
+      
+          setSenderId(userData.userId);
+          setSendername(userData.username);
+          setSenderPicUrl(userData.profilePicUrl);
+      
+          toast.success(`Logged in as ${userData.username}!`);
+          return true; // Indicate login success
+        } catch (err) {
+          console.error("Error during login:", err);
+          toast.error("Something went wrong. Please try again.");
+          return false;
+        }
+      };
+      
+      // Update handleSubmit
+      const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+      
+        if (!email.trim() || !password.trim()) {
+          toast.error("Please fill in all fields.");
+          return;
+        }
+      
+        setLoading(true);
+      
+        if (!navigator.onLine) {
+          toast.error("No internet connection. Please check your network.");
+          setLoading(false);
+          return;
+        }
+      
+        try {
+          const success = await Promise.race([
+            authenticateUserCredentials (email, password),
+            new Promise((_, reject) =>
+              setTimeout(() => reject(new Error("Connection timeout")), 10000)
+            ),
+          ]);
+      
+          if (success) navigate("/chat");
+        } catch  {
+          toast.error("Login failed. Please try again.");
+        } finally {
+          setLoading(false);
+        }
+      };
+      
 
   return (
     <div className="w-full h-screen flex flex-col justify-center items-center space-y-4">
@@ -101,9 +119,8 @@ const SignIn: React.FC = () => {
 
         <Button
           type="submit"
-          className={`bg-primary p-1 text-lg font-semibold rounded text-white w-full flex justify-center ${
-            loading ? "opacity-50 cursor-not-allowed" : ""
-          }`}
+          className={`bg-primary p-1 text-lg font-semibold rounded text-white w-full flex justify-center ${loading ? "opacity-50 cursor-not-allowed" : ""
+            }`}
           disabled={loading}
           btnText={loading ? "Signing in..." : "Sign In"}
         />

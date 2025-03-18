@@ -6,7 +6,8 @@ export const Textarea: React.FC<TextareaProps> = ({
     onChange,
     className,
     value,
-    onKeyDown
+    onKeyDown,
+    disabled=false
 }) => {
     const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -30,6 +31,7 @@ export const Textarea: React.FC<TextareaProps> = ({
             onKeyDown={onKeyDown}
             rows={1}
             style={{ scrollbarWidth: "none" }}
+            disabled={disabled}
         />
     );
 };

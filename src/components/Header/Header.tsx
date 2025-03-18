@@ -6,69 +6,65 @@ import { OnlineIconSvg } from "../Svgs";
 import { Searchbar } from "../Searchbar";
 import { useNavigate } from "react-router-dom";
 
-export const Header: React.FC<HeaderProps> = ({ 
-  userInfo, 
-  actionIcons, 
-  searchValue = "", 
+export const Header: React.FC<HeaderProps> = ({
+  userInfo,
+  actionIcons,
+  searchValue = "",
   setSearchValue,
-  onSearchIconClick 
+  onSearchIconClick
 }) => {
   const [showSearchBar, setShowSearchBar] = React.useState(false);
   const navigate = useNavigate();
-  
+
   const handleSearchIconClick = () => {
     setShowSearchBar(!showSearchBar);
     if (onSearchIconClick) onSearchIconClick();
   };
 
-  const handleIconClick = (iconType:string) => {
-    console.log(iconType);
-    
+  const handleIconClick = (iconType: string) => {
+
     if (iconType === 'search') {
       handleSearchIconClick();
     } else if (iconType === 'edit' && userInfo.userId) {
-      navigate(`/editProfile`);
+      navigate("/", { state: { isEditMode: true } });
     }
   };
-  
+
   return (
     <div className="w-full flex flex-col items-center justify-between py-2">
       <div className="w-full flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
-          <div className="flex gap-2 items-center">
-            <img
-              src={userInfo.profilePicUrl || BlankImg}
-              alt={userInfo.username}
-              className="w-12 h-12 rounded-full object-cover"
-            />
-            <p className="text-sm font-semibold text-primary w-[55%] truncate">{userInfo.username}</p>
-          </div>
-          
+        <div className="flex gap-2 items-center w-[50%]">
+          <img
+            src={userInfo.profilePicUrl || BlankImg}
+            alt={userInfo.username}
+            className="w-12 h-12 rounded-full object-cover"
+          />
+          <p className="text-sm font-semibold text-primary w-fit line-clamp-2">{userInfo.username}</p>
           {userInfo.isOnline === true && (
-              <div>
-                <OnlineIconSvg />
-              </div>
-            )}
+            <div>
+              <OnlineIconSvg />
+            </div>
+          )}
         </div>
-        
+
         <div className="flex items-center gap-x-4">
           {actionIcons.map((icon) => (
-            <Button 
-              type="button" 
-              key={icon.id} 
-              icon={icon.icon} 
+            <Button
+              type="button"
+              key={icon.id}
+              icon={icon.icon}
               className="focus:outline-none"
               onClick={() => handleIconClick(icon.type!)}
             />
           ))}
         </div>
       </div>
-      
+
       {showSearchBar && setSearchValue && (
         <div className="w-full mt-2">
-          <Searchbar 
-            searchValue={searchValue} 
-            setSearchValue={setSearchValue} 
+          <Searchbar
+            searchValue={searchValue}
+            setSearchValue={setSearchValue}
           />
         </div>
       )}

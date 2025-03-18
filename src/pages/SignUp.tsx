@@ -1,17 +1,24 @@
 import React, { useState, useContext, useEffect } from "react";
-import { Input } from "../../components/Input";
-import { Button } from "../../components/Button";
-import { useNavigate } from "react-router-dom";
-import BlankImg from "../../assets/Images/BlankImg.png";
-import useDatabase from "../../hooks/useDatabase";
-import { storage } from "../../utils/firebaseConfig";
+import { Input } from "../components/Input";
+import { Button } from "../components/Button";
+import { useLocation, useNavigate } from "react-router-dom";
+import BlankImg from "../assets/Images/BlankImg.png";
+import { storage } from "../utils/firebaseConfig";
 import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { uid } from "uid";
 import { toast } from "react-toastify";
-import { RecipientContext, SenderContext } from "../../contexts/ChatContext";
-import { SignUpProps } from "./signUp.interface";
+import { RecipientContext, SenderContext } from "../contexts/ChatContext";
+import {
+  collection,
+  doc,
+  setDoc,
+  getDoc,
+  updateDoc,
+} from "firebase/firestore";
+import { RegisterUserProps } from "../interfaces/registerUser.interface";
+import { db,query, where, getDocs } from "../utils/firebaseConfig";
 
-const SignUp: React.FC<SignUpProps> = ({ isEditMode }) => {
+ const SignUp: React.FC = () => {
   const [name, setName] = useState<string>("");
   const [email, setEmail] = useState<string>("");
   const [password, setPassword] = useState<string>("");
@@ -25,12 +32,36 @@ const SignUp: React.FC<SignUpProps> = ({ isEditMode }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [loading, setLoading] = useState<boolean>(false);
   const navigate = useNavigate();
-  const { signUp, updateUserProfile, getUserById } = useDatabase();
-  const { senderId } = useContext(SenderContext);
+  const { senderId, setSendername, setSenderPicUrl,setSenderId } = useContext(SenderContext);
   const {setRecipientId}=useContext(RecipientContext)
 
-  useEffect(() => {
+  const location = useLocation();
+  const isEditMode = location.state?.isEditMode || false;
+  const getUserById = async (userId: string) => {
+    try {
+      const usersRef = collection(db, "users");
+      const q = query(usersRef, where("userId", "==", userId));
+      const querySnapshot = await getDocs(q);
 
+      if (querySnapshot.empty) {
+        return null;
+      }
+
+      const userData = querySnapshot.docs[0].data();
+      return {
+        userId: userData.userId,
+        username: userData.username,
+        email: userData.email,
+        profilePicUrl: userData.profilePicUrl,
+        password: userData.password,
+      };
+    } catch (error) {
+      console.error("Error fetching user by ID:", error);
+      throw error;
+    }
+  };
+
+  useEffect(() => {
     const fetchUserData = async () => {
       if (isEditMode && senderId) {
         // setLoading(true);
@@ -112,6 +143,77 @@ const SignUp: React.FC<SignUpProps> = ({ isEditMode }) => {
     return isValid;
   };
 
+  const registerUser = async (userData: RegisterUserProps) => {
+    try {
+      const userRef = doc(db, "users", userData.email);
+      const userSnap = await getDoc(userRef);
+
+      if (userSnap.exists()) {
+        return {
+          success: false,
+          message: "User already exists with this email.",
+        };
+      }
+
+      // Store user data in Firestore
+      await setDoc(doc(collection(db, "users"), userData.email), {
+        username: userData.username,
+        email: userData.email,
+        password: userData.password,
+        profilePicUrl: userData.profilePicUrl,
+        userId: userData.userId,
+      });
+
+      return { success: true, message: "Account created successfully!" };
+    } catch (error) {
+      console.error("Error in user registration:", error);
+      return { success: false, message: "Unexpected error occurred." };
+    }
+  };
+
+  const updateUserProfile = async (userData: RegisterUserProps) => {
+    try {
+      // First, get the user document reference
+      const usersRef = collection(db, "users");
+      const q = query(usersRef, where("userId", "==", userData.userId));
+      const querySnapshot = await getDocs(q);
+
+      if (querySnapshot.empty) {
+        return {
+          success: false,
+          message: "User not found.",
+        };
+      }
+
+      const userDoc = querySnapshot.docs[0];
+      const userRef = doc(db, "users", userDoc.id);
+
+      // Create updated data object
+      const updatedData = {
+        username: userData.username,
+        profilePicUrl: userData.profilePicUrl,
+        password: userData.password,
+      };
+
+      if (userData.password) {
+        updatedData.password = userData.password;
+      }
+
+      // Update the document
+      await updateDoc(userRef, updatedData);
+
+      // Update context state
+      setSendername(userData.username);
+      setSenderPicUrl(userData.profilePicUrl!);
+      setSenderId("")
+
+      return { success: true, message: "Profile updated successfully!" };
+    } catch (error) {
+      console.error("Error updating user profile:", error);
+      return { success: false, message: "Unexpected error occurred." };
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -156,7 +258,7 @@ const SignUp: React.FC<SignUpProps> = ({ isEditMode }) => {
           profilePicUrl: uploadedImageUrl || "",
         };
 
-        const result = await signUp(userData);
+        const result = await registerUser(userData);
 
         if (!result.success) {
           toast.error(result.message || "Failed to sign up");
@@ -274,7 +376,7 @@ const SignUp: React.FC<SignUpProps> = ({ isEditMode }) => {
             type="button"
             btnText="Cancel"
             className="text-primary font-semibold text-xl"
-            onClick={() => navigate("/")}
+            onClick={() => navigate("/chat")}
           />
         ) : (
           <>
@@ -291,5 +393,5 @@ const SignUp: React.FC<SignUpProps> = ({ isEditMode }) => {
     </div>
   );
 };
+export default SignUp
 
-export default SignUp;

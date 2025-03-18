@@ -4,18 +4,16 @@ import { uid } from "uid";
 import { SenderContext, RecipientContext } from "../../../contexts/ChatContext";
 import { Message } from "../../../interfaces/message.interface";
 import { MessageGroup } from "../messageGroup.interface";
-import { PusherMembers } from "../pusherMember.interface";
-import useDatabase from "../../../hooks/useDatabase";
+import { PusherMembers } from "../pusherMember.interface";;
 import { ref, uploadBytes, getDownloadURL, storage } from "../../../utils/firebaseConfig";
-import { getChannelName, groupMessagesByDate, dataUrlToBlob, blobToFile } from "./helper";
+import { getChannelName, groupMessagesByDate, dataUrlToBlob, blobToFile,saveMessage } from "./helper";
+import getChatHistory from "../../../utils/getChatHistory";
 
 export const SERVER_URL = "https://chit-chat.koyeb.app";
 export const PUSHER_KEY = "33466c91963fd345d327";
 export const PUSHER_CLUSTER = "ap2";
 
 export function useHelper() {
-    // Context
-    const { saveMessage, getChatHistory } = useDatabase();
     const { recipientname, recipientId, recipientPicUrl } = useContext(RecipientContext);
     const { senderId } = useContext(SenderContext);
 
@@ -40,8 +38,8 @@ export function useHelper() {
     const pusherRef = useRef<Pusher | null>(null);
     const messageChannelRef = useRef<Channel | null>(null);
     const presenceChannelRef = useRef<PresenceChannel | null>(null);
-    const heartbeatIntervalRef = useRef<NodeJS.Timeout | null>(null);
-    const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+    const heartbeatIntervalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
     const lastPresenceUpdateRef = useRef<number>(0);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const messagesEndRef = useRef<HTMLDivElement>(null);
