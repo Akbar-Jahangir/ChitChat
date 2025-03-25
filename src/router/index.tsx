@@ -3,12 +3,14 @@ import { Route, BrowserRouter as Router, Routes } from "react-router-dom";
 import { ChatProvider } from "../contexts/ChatContext";
 import SignUp from "../pages/SignUp";
 import SignIn from "../pages/SignIn";
+import { SidebarProvider } from "../contexts/SidebarContext/SidebarContext";
 
 const Chat = lazy(() => import("../pages/Chat"))
 
 export const AppRoutes: React.FC = () => {
   return (
     <ChatProvider>
+      <SidebarProvider>
       <Router>
         <Suspense
           fallback={
@@ -22,6 +24,7 @@ export const AppRoutes: React.FC = () => {
           </Routes>
         </Suspense>
       </Router>
+      </SidebarProvider>
     </ChatProvider>
   );
 };

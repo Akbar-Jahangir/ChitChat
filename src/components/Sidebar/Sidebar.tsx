@@ -20,13 +20,14 @@ import BlankImg from "../../assets/Images/BlankImg.png"
 import { MediaDisplay } from "../MediaDisplay";
 import { Message } from "../../interfaces/message.interface";
 import getChatHistory from "../../utils/getChatHistory";
+import useSidebar from "../../hooks/useSidebar";
 
 export const Sidebar: React.FC<SidebarProps> = ({ alignment = null, }) => {
   const [searchValue, setSearchValue] = useState("");
   const [mediaItems, setMediaItems] = useState<Message[]>([]);
   const [selectedMediaType, setSelectedMediaType] = useState<string | null>(null);
   const [filteredMediaItems, setFilteredMediaItems] = useState<Message[]>([]);
-  const [isRightSidebar, setIsRightSidebar] = useState<boolean>(true)
+  const { toggleRightSidebar,isRightSidebarOpen} = useSidebar()
   const { sendername, senderId, senderPicUrl } = useContext(SenderContext);
   const { recipientId, recipientname, recipientPicUrl } = useContext(RecipientContext);
   const userInfo = {
@@ -151,6 +152,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ alignment = null, }) => {
   return (
     <>
       {alignment === "left" ? (
+       
         <div className="w-[100%] lg:w-[27%] flex flex-col items-center bg-smokeWhite space-y-3.5 h-screen py-4 overflow-hidden absolute lg:static z-50">
           <div className="w-[90%] flex flex-col items-center space-y-3.5">
             <Header userInfo={userInfo} actionIcons={[{ id: "1", icon: <EditIconSvg />,type:"edit" }]} />
@@ -162,7 +164,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ alignment = null, }) => {
           </div>
         </div>
       ) :
-        isRightSidebar &&
+      isRightSidebarOpen &&
         (
           <div className="w-full lg:w-[27%] flex flex-col items-center bg-smokeWhite space-y-3.5 h-screen p-4 overflow-hidden absolute  lg:static z-50">
             <div className="flex flex-col items-center space-y-4 md:space-y-6 h-screen w-full">
@@ -179,7 +181,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ alignment = null, }) => {
               </div>
               <div className="space-y-4 md:space-y-6 flex flex-col items-center overflow-y-scroll custom-scrollbar h-[70vh] pb-10">
                 <div className="flex gap-x-3">
-                  <Button type="button" btnText="Chat" icon={<ChatIconSvg />} className="text-xs" iconClass="chatting-btn" onClick={() => setIsRightSidebar(false)} />
+                  <Button type="button" btnText="Chat" icon={<ChatIconSvg />} className="text-xs" iconClass="chatting-btn" onClick={toggleRightSidebar} />
                   <span className="h-[99px] border border-slate"></span>
                   <Button type="button" btnText="Video Call" icon={<VideoChatIconSvg />} className=" text-xs" iconClass="chatting-btn" />
                 </div>

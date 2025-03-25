@@ -13,4 +13,5 @@ export interface HeaderProps {
   searchValue?: string;
   setSearchValue?: React.Dispatch<React.SetStateAction<string>>;
   onSearchIconClick?: () => void;
+  leftSidebarIcon?:React.ReactNode
 }

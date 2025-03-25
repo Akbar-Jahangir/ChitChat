@@ -5,16 +5,19 @@ import BlankImg from "../../assets/Images/BlankImg.png";
 import { OnlineIconSvg } from "../Svgs";
 import { Searchbar } from "../Searchbar";
 import { useNavigate } from "react-router-dom";
+// import useSidebar from "../../hooks/useSidebar";
 
 export const Header: React.FC<HeaderProps> = ({
   userInfo,
   actionIcons,
   searchValue = "",
   setSearchValue,
-  onSearchIconClick
+  onSearchIconClick,
+
 }) => {
   const [showSearchBar, setShowSearchBar] = React.useState(false);
   const navigate = useNavigate();
+  // const { toggleLeftSidebar } = useSidebar()
 
   const handleSearchIconClick = () => {
     setShowSearchBar(!showSearchBar);
@@ -34,6 +37,7 @@ export const Header: React.FC<HeaderProps> = ({
     <div className="w-full flex flex-col items-center justify-between py-2">
       <div className="w-full flex items-center justify-between">
         <div className="flex gap-2 items-center w-[50%]">
+         
           <img
             src={userInfo.profilePicUrl || BlankImg}
             alt={userInfo.username}

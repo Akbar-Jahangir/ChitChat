@@ -15,11 +15,11 @@ import { Header } from "../Header";
 import { MessageBubble } from "../MessageBubble";
 import { Textarea } from "../Textarea";
 import FilePreview from "../FilePreview/FilePreview";
-import { ChatWindowProps } from "./chatWindow.interface";
 import { Camera } from "../Camera/Camera";
 import { useHelper } from "./Helpers/useHelper";
+import useSidebar from "../../hooks/useSidebar";
 
-export const ChatWindow: React.FC<ChatWindowProps> = ({ toggleRightSidebar, rightSidebarVisible }) => {
+export const ChatWindow: React.FC= () => {
     const {
         // States
         outgoingMessage,
@@ -50,7 +50,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ toggleRightSidebar, righ
         handleClearSearch,
         cancelMedia
     } = useHelper();
-    
+    const { toggleRightSidebar,isRightSidebarOpen,isLeftSidebarOpen } = useSidebar();
     // Add a new state to track if message is being sent
     const [isSending, setIsSending] = React.useState(false);
 
@@ -75,7 +75,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ toggleRightSidebar, righ
     const SidebarToggleIcon = () => (
         <div
             onClick={toggleRightSidebar}
-            className={`cursor-pointer transition-transform duration-300 ${rightSidebarVisible ? 'rotate-180' : ''}`}
+            className={`cursor-pointer transition-transform duration-300 ${isRightSidebarOpen ? 'rotate-180' : ''}`}
         >
             <ArrowIconSvg />
         </div>
@@ -87,6 +87,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ toggleRightSidebar, righ
     ];
 
     return (
+        !isLeftSidebarOpen && (
         <div className={`w-full lg:w-auto flex-grow transition-all duration-300 bg-white h-screen relative`}>
             {showNotification && (
                 <div className="fixed top-4 right-4 max-w-xs bg-primary text-white p-4 rounded-lg shadow-lg z-50 animate-fadeIn">
@@ -108,6 +109,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ toggleRightSidebar, righ
                 <div className="w-[95%] sticky top-0 bg-white z-10">
                     <Header
                         userInfo={userInfo}
+                        leftSidebarIcon={<ArrowIconSvg />}
                         actionIcons={[
                             { id: "1", icon: <SearchIconSvg />, type: 'search' },
                             { id: "2", icon: <FavoriteIconSvg width="22px" height="19px" color="#BABABA" />, type: 'favorite' },
@@ -235,6 +237,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ toggleRightSidebar, righ
                     </form>
                 </div>
             </div>
-        </div>
+        </div>)
+        
     );
 };

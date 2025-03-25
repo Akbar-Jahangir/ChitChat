@@ -1,14 +1,17 @@
-import React, { useContext, useEffect, useState } from "react";
+import React, { useContext, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { SenderContext, RecipientContext } from "../contexts/ChatContext";
 import { Sidebar } from "../components/Sidebar";
 import { ChatWindow } from "../components/ChatWindow";
 
+import useSidebar from "../hooks/useSidebar";
+
 const Chat: React.FC = () => {
   const { recipientId } = useContext(RecipientContext);
   const { senderId } = useContext(SenderContext);
   const navigate = useNavigate();
-  const [rightSidebarVisible, setRightSidebarVisible] = useState(false);
+  // const [rightSidebarVisible, setRightSidebarVisible] = useState(false);
+  const {isRightSidebarOpen}=useSidebar();
 
   useEffect(() => {
     if (!senderId) {
@@ -16,9 +19,9 @@ const Chat: React.FC = () => {
     }
   }, []);
 
-  const toggleRightSidebar = () => {
-    setRightSidebarVisible(prev => !prev);
-  };
+  // const toggleRightSidebar = () => {
+  //   setRightSidebarVisible(prev => !prev);
+  // };
 
   if (!senderId) {
     return null;
@@ -29,11 +32,8 @@ const Chat: React.FC = () => {
       <Sidebar alignment="left" />
       {recipientId && (
         <div className="w-[100%] flex absolute lg:static z-50 h-screen">
-          <ChatWindow 
-            toggleRightSidebar={toggleRightSidebar} 
-            rightSidebarVisible={rightSidebarVisible} 
-          />
-          {rightSidebarVisible && <Sidebar alignment="right"/>}
+          <ChatWindow />
+          {isRightSidebarOpen && <Sidebar alignment="right"/>}
         </div>
       )}
     </div>

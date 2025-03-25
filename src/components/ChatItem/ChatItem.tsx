@@ -9,6 +9,7 @@ import { db, getDocs } from "../../utils/firebaseConfig";
 import {
   collection,
 } from "firebase/firestore";
+import useSidebar from "../../hooks/useSidebar";
 
 export const ChatItem: React.FC<ChatItemProps> = React.memo(({ searchValue }) => {
   const [activeChatId, setActiveChatId] = useState<string | null>(null);
@@ -20,6 +21,7 @@ export const ChatItem: React.FC<ChatItemProps> = React.memo(({ searchValue }) =>
 
   const { setRecipientname, setRecipientId, setRecipientPicUrl } = useContext(RecipientContext);
   const { senderId } = useContext(SenderContext);
+  const {toggleLeftSidebar}=useSidebar()
 
   useEffect(() => {
     const fetchUsers = async () => {
@@ -125,7 +127,9 @@ export const ChatItem: React.FC<ChatItemProps> = React.memo(({ searchValue }) =>
         // Save to localStorage
         localStorage.setItem(`lastSeenTimestamps_${senderId}`, JSON.stringify(newTimestamps));
       }
+      toggleLeftSidebar()
     },
+   
     [setRecipientname, setRecipientId, setRecipientPicUrl, lastSeenTimestamps, senderId, messages]
   );
 
@@ -244,7 +248,11 @@ export const ChatItem: React.FC<ChatItemProps> = React.memo(({ searchValue }) =>
             className={`w-[100%] flex flex-col items-center rounded-sm py-2 cursor-pointer ${activeChatId === user.userId ? "bg-slate" : "hover:bg-slate"
               }`}
             key={user.userId}
-            onClick={() => handleClick(user.userId, user.username, user.profilePicUrl)}
+            onClick={() => {
+            
+              handleClick(user.userId, user.username, user.profilePicUrl)
+             
+            }}
           >
             <div className="flex w-[90%] justify-between gap-2">
               <div className="w-fit">
